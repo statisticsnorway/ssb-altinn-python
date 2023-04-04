@@ -1,0 +1,14 @@
+{
+  "_output_dir": "/home/obr/repositories",
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "\u00d8yvind Bruer-Skarsb\u00f8",
+  "copyright_year": "2023",
+  "development_status": "Development Status :: 3 - Alpha",
+  "email": "obr@ssb.no",
+  "friendly_name": "SSB Altinn Python",
+  "github_user": "skars82",
+  "license": "MIT",
+  "package_name": "altinn",
+  "project_name": "ssb-altinn-python",
+  "version": "0.0.0"
+}
