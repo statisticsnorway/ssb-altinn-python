@@ -1,17 +1,34 @@
-"""Test cases for the __main__ module."""
+import os
+
 import pytest
-from click.testing import CliRunner
+from pytest import MonkeyPatch
 
-from altinn import __main__
-
-
-@pytest.fixture
-def runner() -> CliRunner:
-    """Fixture for invoking command-line interfaces."""
-    return CliRunner()
+from altinn.__main__ import XmlFile
+from altinn.__main__ import is_dapla
 
 
-def test_main_succeeds(runner: CliRunner) -> None:
-    """It exits with a status code of zero."""
-    result = runner.invoke(__main__.main)
-    assert result.exit_code == 0
+class TestIsDapla:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, monkeypatch: MonkeyPatch) -> None:
+        monkeypatch.delenv("JUPYTER_IMAGE_SPEC", raising=False)
+
+    def test_is_dapla_true(self) -> None:
+        os.environ["JUPYTER_IMAGE_SPEC"] = "dapla-jupyterlab:latest"
+        assert is_dapla()
+
+    def test_is_dapla_false(self) -> None:
+        os.environ["JUPYTER_IMAGE_SPEC"] = "some-other-jupyterlab:latest"
+        assert not is_dapla()
+
+    def test_is_dapla_no_env_variable(self) -> None:
+        assert not is_dapla()
+
+
+class TestXmlFile:
+    def test_filename(self) -> None:
+        xml_file = XmlFile("file.xml")
+        assert xml_file.filename() == "file"
+
+    def test_filename_nested(self) -> None:
+        xml_file = XmlFile("path/to/file.xml")
+        assert xml_file.filename() == "file"
