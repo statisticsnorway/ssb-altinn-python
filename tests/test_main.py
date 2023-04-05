@@ -1,6 +1,5 @@
 """This module contains the tests for the main function."""
 import os
-from unittest.mock import patch
 
 import pytest
 from pytest import MonkeyPatch
