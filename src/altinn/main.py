@@ -6,10 +6,11 @@ from typing import Optional
 
 def main() -> None:
     """Placeholder function for the main function.
-    
+
     This function is called when the altinn package is run as a script.
     """
-    pass
+    print("This is main-function")
+
 
 def is_dapla() -> bool:
     """Check whether the current environment is running a Dapla JupyterLab instance.

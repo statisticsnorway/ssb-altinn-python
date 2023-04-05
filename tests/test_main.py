@@ -1,13 +1,25 @@
 """This module contains the tests for the main function."""
 import os
+from io import StringIO
+from unittest.mock import patch
 
 import pytest
 from pytest import MonkeyPatch
 
 from altinn.main import XmlFile
 from altinn.main import is_dapla
+from altinn.main import main
 
 
+def test_main(capsys):
+    """Test function to check main().
+
+    Checks if the main function prints the correct string.
+    """
+    with patch('sys.stdout', new=StringIO()) as fake_output:
+        main()
+
+    assert fake_output.getvalue().strip() == 'This is main-function'
 class TestIsDapla:
     """A test class for the is_dapla() function."""
 
