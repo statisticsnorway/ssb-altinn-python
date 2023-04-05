@@ -4,8 +4,8 @@ import os
 import pytest
 from pytest import MonkeyPatch
 
-from altinn.__main__ import XmlFile
-from altinn.__main__ import is_dapla
+from altinn.main import XmlFile
+from altinn.main import is_dapla
 
 
 class TestIsDapla:
