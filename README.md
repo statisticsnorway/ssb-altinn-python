@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/pypi/l/ssb-altinn-python)][license]
 
 [![Read the documentation at https://ssb-altinn-python.readthedocs.io/](https://img.shields.io/readthedocs/ssb-altinn-python/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/skars82/ssb-altinn-python/workflows/Tests/badge.svg)][tests]
+[![Tests](https://github.com/statisticsnorway/ssb-altinn-python/workflows/Tests/badge.svg)][tests]
 [![Codecov](https://codecov.io/gh/skars82/ssb-altinn-python/branch/main/graph/badge.svg)][codecov]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
