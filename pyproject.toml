@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ssb-altinn-python"
-version = "0.0.2"
+version = "0.0.3"
 description = "SSB Altinn Python"
 authors = ["Øyvind Bruer-Skarsbø <obr@ssb.no>"]
 license = "MIT"
@@ -19,9 +19,10 @@ classifiers = [
 Changelog = "https://github.com/skars82/ssb-altinn-python/releases"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.10"
 click = ">=8.0.1"
 pytest = "^7.2.2"
+dapla-toolbelt = "^1.6.2"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"
