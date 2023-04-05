@@ -23,7 +23,18 @@
 
 ## Features
 
-- TODO
+This is work-in-progress Python-package for dealing with xml-data from Altinn3.
+
+```python
+from altinn import __main__
+
+x = __main__.XmlFile(
+    "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+)
+
+x.filename()
+
+```
 
 ## Requirements
 
@@ -34,7 +45,7 @@
 You can install _SSB Altinn Python_ via [pip] from [PyPI]:
 
 ```console
-$ pip install ssb-altinn-python
+pip install ssb-altinn-python
 ```
 
 ## Usage

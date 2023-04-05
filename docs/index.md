@@ -4,10 +4,6 @@ end-before: <!-- github-only -->
 ---
 ```
 
-[license]: license
-[contributor guide]: contributing
-[command-line reference]: usage
-
 ```{toctree}
 ---
 hidden:
@@ -19,5 +15,5 @@ reference
 contributing
 Code of Conduct <codeofconduct>
 License <license>
-Changelog <https://github.com/skars82/ssb-altinn-python/releases>
+Changelog <https://github.com/statisticsnorway/ssb-altinn-python/releases>
 ```
