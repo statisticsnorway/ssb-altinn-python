@@ -3,6 +3,7 @@ import os
 import shlex
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from textwrap import dedent
 
@@ -141,9 +142,20 @@ def precommit(session: Session) -> None:
 @session(python=python_versions[0])
 def safety(session: Session) -> None:
     """Scan dependencies for insecure packages."""
-    requirements = session.poetry.export_requirements()
-    session.install("safety")
-    session.run("safety", "check", "--full-report", f"--file={requirements}")
+    with tempfile.NamedTemporaryFile() as requirements:
+        session.run(
+            "poetry",
+            "export",
+            "--format=requirements.txt",
+            "--output",
+            requirements.name,
+            "--without-hashes",
+            "--with",
+            "dev",
+            external=True,
+        )
+        session.install("safety")  # Update this line
+        session.run("safety", "check", "--full-report", f"--file={requirements.name}")
 
 
 @session(python=python_versions)

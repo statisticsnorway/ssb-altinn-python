@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ssb-altinn-python"
-version = "0.0.1"
+version = "0.0.2"
 description = "SSB Altinn Python"
 authors = ["Øyvind Bruer-Skarsbø <obr@ssb.no>"]
 license = "MIT"
@@ -21,6 +21,7 @@ Changelog = "https://github.com/skars82/ssb-altinn-python/releases"
 [tool.poetry.dependencies]
 python = "^3.7"
 click = ">=8.0.1"
+pytest = "^7.2.2"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"
@@ -40,7 +41,7 @@ pre-commit = ">=2.16.0"
 pre-commit-hooks = ">=4.1.0"
 pytest = ">=6.2.5"
 pyupgrade = ">=2.29.1"
-safety = ">=1.10.3"
+safety = ">=2.2.1"
 sphinx = ">=4.3.2"
 sphinx-autobuild = ">=2021.3.14"
 sphinx-click = ">=3.0.2"
