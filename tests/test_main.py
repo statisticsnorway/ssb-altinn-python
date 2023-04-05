@@ -1,8 +1,5 @@
 """This module contains the tests for the main function."""
 import os
-import subprocess
-from io import StringIO
-from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -10,31 +7,6 @@ from pytest import MonkeyPatch
 
 from altinn.main import XmlFile
 from altinn.main import is_dapla
-from altinn.main import main
-
-
-def test_main1() -> None:
-    expected_output = b"This is main-function\n"
-
-    process = subprocess.run(
-        ["python", "-m", "altinn"],
-        capture_output=True,
-    )
-
-    assert process.returncode == 0
-    assert process.stdout == expected_output
-    assert process.stderr == b""
-
-
-def test_main(capsys: Any) -> None:
-    """Test function to check main().
-
-    Checks if the main function prints the correct string.
-    """
-    with patch("sys.stdout", new=StringIO()) as fake_output:
-        main()
-
-    assert fake_output.getvalue().strip() == "This is main-function"
 
 
 class TestIsDapla:

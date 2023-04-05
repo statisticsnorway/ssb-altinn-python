@@ -9,7 +9,7 @@ def main() -> None:
 
     This function is called when the altinn package is run as a script.
     """
-    print("This is main-function")
+    pass
 
 
 def is_dapla() -> bool:
