@@ -33,10 +33,12 @@ x = FileInfo(
 )
 
 x.filename()
-# Prints the filename of the xml-file
+# Returns the filename: form_dc551844cd74
 ```
 
 ## Requirements
+
+s
 
 - TODO
 

@@ -1,1 +1,1 @@
-"""Parsing of Altinn xml-files"""
+"""Parsing of Altinn xml-files."""

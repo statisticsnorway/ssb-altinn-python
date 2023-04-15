@@ -3,6 +3,9 @@
 import os
 from typing import Optional
 
+from dapla import FileClient
+from defusedxml.minidom import parseString
+
 
 def main() -> None:
     """Placeholder function for the main function.
@@ -53,3 +56,10 @@ class FileInfo:
         """
         split_path = self.file_path.split("/")
         return split_path[-1][:-4]
+
+    def pretty_print(self) -> None:
+        """Print formatted version of an xml-file."""
+        fs = FileClient.get_gcs_file_system()
+        dom = parseString(fs.cat_file(self.file_path))
+        pretty_xml = dom.toprettyxml(indent="  ")
+        print(pretty_xml)

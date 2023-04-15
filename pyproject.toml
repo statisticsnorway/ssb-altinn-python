@@ -23,6 +23,7 @@ python = "^3.10"
 click = ">=8.0.1"
 pytest = "^7.2.2"
 dapla-toolbelt = "^1.6.2"
+defusedxml = "^0.7.1"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"

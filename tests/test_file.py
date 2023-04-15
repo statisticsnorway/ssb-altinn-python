@@ -1,7 +1,10 @@
 """This module contains the tests for the main function."""
+
 import os
+from unittest.mock import MagicMock
 
 import pytest
+from dapla import FileClient
 from pytest import MonkeyPatch
 
 from altinn.file import FileInfo
@@ -67,3 +70,26 @@ class TestXmlFile:
         """
         xml_file = FileInfo("path/to/file.xml")
         assert xml_file.filename() == "file"
+
+    def test_pretty_print(self, monkeypatch):
+        """Test pretty_print method of XmlFile class."""
+        xml_string = """<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+            <child>Hello, world!</child>
+        </root>
+        """
+
+        # Mock the cat_file method to return the xml as bytes
+        def mock_cat_file(*args, **kwargs):
+            return xml_string.encode()
+
+        # Patch the FileClient.get_gcs_file_system method to return a mock
+        # object that has the cat_file method patched
+        file_client_mock = MagicMock()
+        file_client_mock.cat_file.side_effect = mock_cat_file
+        get_gcs_file_system_mock = MagicMock(return_value=file_client_mock)
+        monkeypatch.setattr(FileClient, "get_gcs_file_system", get_gcs_file_system_mock)
+
+        # Create an instance of FileInfo and call pretty_print on it
+        file_info = FileInfo("path/to/file.xml")
+        file_info.pretty_print()
