@@ -23,7 +23,7 @@ def is_dapla() -> bool:
     return bool(jupyter_image_spec and "dapla-jupyterlab" in jupyter_image_spec)
 
 
-class XmlFile:
+class FileInfo:
     """This class represents an Altinn application."""
 
     def __init__(self, file_path: str) -> None:
@@ -32,7 +32,18 @@ class XmlFile:
         Args:
             file_path (str): The path to the XML file.
         """
-        self.file_path = file_path
+        if is_dapla():
+            self.file_path = file_path
+        else:
+            print(
+                """FileInfo class can only be instantiated in a Dapla JupyterLab
+                  environment."""
+            )
+            # Alternatively, you can print a message and return,
+            # without raising an exception
+            # print("XmlFile class can only be instantiated in a Dapla
+            # JupyterLab environment.")
+            # return
 
     def filename(self) -> str:
         """Get the name of the XML file.

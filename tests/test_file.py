@@ -4,8 +4,8 @@ import os
 import pytest
 from pytest import MonkeyPatch
 
-from altinn.main import XmlFile
-from altinn.main import is_dapla
+from altinn.file import FileInfo
+from altinn.file import is_dapla
 
 
 class TestIsDapla:
@@ -55,7 +55,7 @@ class TestXmlFile:
         Checks if the filename method of XmlFile class returns
         the correct file name without the extension.
         """
-        xml_file = XmlFile("file.xml")
+        xml_file = FileInfo("file.xml")
         assert xml_file.filename() == "file"
 
     def test_filename_nested(self) -> None:
@@ -65,5 +65,5 @@ class TestXmlFile:
         the correct file name without the extension, when the
         file is nested in directories.
         """
-        xml_file = XmlFile("path/to/file.xml")
+        xml_file = FileInfo("path/to/file.xml")
         assert xml_file.filename() == "file"

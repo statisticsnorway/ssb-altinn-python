@@ -1,5 +1,5 @@
 """Main entry point for the altinn package."""
-from .main import main
+from altinn.file import main
 
 
 if __name__ == "__main__":
