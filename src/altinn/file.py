@@ -3,6 +3,9 @@
 import os
 from typing import Optional
 
+from dapla import FileClient
+from defusedxml.minidom import parseString
+
 
 def main() -> None:
     """Placeholder function for the main function.
@@ -23,7 +26,7 @@ def is_dapla() -> bool:
     return bool(jupyter_image_spec and "dapla-jupyterlab" in jupyter_image_spec)
 
 
-class XmlFile:
+class FileInfo:
     """This class represents an Altinn application."""
 
     def __init__(self, file_path: str) -> None:
@@ -32,7 +35,18 @@ class XmlFile:
         Args:
             file_path (str): The path to the XML file.
         """
-        self.file_path = file_path
+        if is_dapla():
+            self.file_path = file_path
+        else:
+            print(
+                """FileInfo class can only be instantiated in a Dapla JupyterLab
+                  environment."""
+            )
+            # Alternatively, you can print a message and return,
+            # without raising an exception
+            # print("XmlFile class can only be instantiated in a Dapla
+            # JupyterLab environment.")
+            # return
 
     def filename(self) -> str:
         """Get the name of the XML file.
@@ -42,3 +56,10 @@ class XmlFile:
         """
         split_path = self.file_path.split("/")
         return split_path[-1][:-4]
+
+    def pretty_print(self) -> None:
+        """Print formatted version of an xml-file."""
+        fs = FileClient.get_gcs_file_system()
+        dom = parseString(fs.cat_file(self.file_path))
+        pretty_xml = dom.toprettyxml(indent="  ")
+        print(pretty_xml)

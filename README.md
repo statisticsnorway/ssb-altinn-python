@@ -26,17 +26,19 @@
 This is work-in-progress Python-package for dealing with xml-data from Altinn3.
 
 ```python
-from altinn import __main__
+from altinn import FileInfo
 
-x = __main__.XmlFile(
+x = FileInfo(
     "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 )
 
 x.filename()
-
+# Returns the filename: form_dc551844cd74
 ```
 
 ## Requirements
+
+s
 
 - TODO
 
