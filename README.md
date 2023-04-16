@@ -28,27 +28,34 @@ This is work-in-progress Python-package for dealing with xml-data from Altinn3.
 ```python
 from altinn import FileInfo
 
-x = FileInfo(
+form = FileInfo(
     "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 )
 
-x.filename()
-# Returns the filename: form_dc551844cd74
+# Get file filename without '.xml'-postfix
+form.filename()
+# Returns: 'form_dc551844cd74'
+
+# Print a nicely formatted version of the file
+form.pretty_print()
 ```
 
 ## Requirements
 
-s
-
-- TODO
+ - click >=8.0.1
+ - dapla-toolbelt >=1.6.2,<2.0.0
+ - defusedxml >=0.7.1,<0.8.0
+ - pytest >=7.2.2,<8.0.0
 
 ## Installation
 
-You can install _SSB Altinn Python_ via [pip] from [PyPI]:
+You can install _SSB Altinn Python_ via [poetry] from [PyPI]:
 
 ```console
-pip install ssb-altinn-python
+poetry add ssb-altinn-python
 ```
+
+To install this in the Jupyter-environment on Dapla, where it is ment to be used, it is required to install it in an virtual environment. It is recommended to do this in an [ssb-project](https://manual.dapla.ssb.no/jobbe-med-kode.html) where the preferred tool is [poetry](https://python-poetry.org/).
 
 ## Usage
 
