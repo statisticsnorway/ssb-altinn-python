@@ -42,10 +42,10 @@ form.pretty_print()
 
 ## Requirements
 
- - click >=8.0.1
- - dapla-toolbelt >=1.6.2,<2.0.0
- - defusedxml >=0.7.1,<0.8.0
- - pytest >=7.2.2,<8.0.0
+- click >=8.0.1
+- dapla-toolbelt >=1.6.2,<2.0.0
+- defusedxml >=0.7.1,<0.8.0
+- pytest >=7.2.2,<8.0.0
 
 ## Installation
 
