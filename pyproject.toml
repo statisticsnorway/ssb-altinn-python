@@ -20,7 +20,6 @@ Changelog = "https://github.com/skars82/ssb-altinn-python/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-click = ">=8.0.1"
 pytest = "^7.2.2"
 dapla-toolbelt = "^1.6.2"
 defusedxml = "^0.7.1"
