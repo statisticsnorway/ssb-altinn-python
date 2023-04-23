@@ -4,6 +4,8 @@ import os
 from typing import Optional
 
 from dapla import FileClient
+from defusedxml.ElementTree import ParseError
+from defusedxml.ElementTree import parse
 from defusedxml.minidom import parseString
 
 
@@ -69,3 +71,12 @@ class FileInfo:
         fs = FileClient.get_gcs_file_system()
         file = fs.cat_file(self.file_path)
         print(file.decode())
+
+    def validate(self) -> bool:
+        """Validate the XML file."""
+        try:
+            parse(self.file_path)
+            return True
+
+        except ParseError:
+            return False
