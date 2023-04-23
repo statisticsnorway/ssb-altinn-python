@@ -1,4 +1,4 @@
-"""This module contains the tests for the main function."""
+"""This module contains the tests for the file function."""
 
 import os
 from unittest.mock import MagicMock
@@ -49,8 +49,8 @@ class TestIsDapla:
         assert not is_dapla()
 
 
-class TestXmlFile:
-    """A test class for the XmlFile class."""
+class TestFileInfo:
+    """A test class for the FileInfo class."""
 
     def test_filename(self) -> None:
         """Test function.
