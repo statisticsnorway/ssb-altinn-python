@@ -63,3 +63,9 @@ class FileInfo:
         dom = parseString(fs.cat_file(self.file_path))
         pretty_xml = dom.toprettyxml(indent="  ")
         print(pretty_xml)
+
+    def print(self) -> None:
+        """Print unformatted version of an XML file."""
+        fs = FileClient.get_gcs_file_system()
+        file = fs.cat_file(self.file_path)
+        print(file.decode())
