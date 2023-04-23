@@ -74,8 +74,9 @@ class FileInfo:
 
     def validate(self) -> bool:
         """Validate the XML file."""
+        fs = FileClient.get_gcs_file_system()
         try:
-            parse(self.file_path)
+            parseString(fs.cat_file(self.file_path))
             return True
 
         except ParseError:
