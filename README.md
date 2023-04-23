@@ -38,6 +38,13 @@ form.filename()
 
 # Print a nicely formatted version of the file
 form.pretty_print()
+
+# Print an unformatted version of the file. Does not require the file to be parseable by an xml-library. Useful for inspecting unvalid xml-files. 
+form.print()
+
+# Check if xml-file is valid. Useful to inspect xml-files with formal errors in the xml-schema.
+form.validate()
+# Returns True og False
 ```
 
 ## Requirements
