@@ -5,7 +5,6 @@ from typing import Optional
 
 from dapla import FileClient
 from defusedxml.ElementTree import ParseError
-from defusedxml.ElementTree import parse
 from defusedxml.minidom import parseString
 
 
