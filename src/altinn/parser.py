@@ -69,10 +69,10 @@ class ParseSingleXml:
             if element is not None:
                 value = element.text
                 data.append(value)
+                result_dict[tag] = value
             else:
                 data.append(None)
-
-                result_dict[tag] = value
+                result_dict[tag] = None
 
         return result_dict
 
