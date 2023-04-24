@@ -1,52 +1,10 @@
 """This module contains the tests for the file function."""
 
-import os
 from unittest.mock import MagicMock
 
-import pytest
 from dapla import FileClient
-from pytest import MonkeyPatch
 
 from altinn.file import FileInfo
-from altinn.file import is_dapla
-
-
-class TestIsDapla:
-    """A test class for the is_dapla() function."""
-
-    @pytest.fixture(autouse=True)
-    def setup_method(self, monkeypatch: MonkeyPatch) -> None:
-        """A fixture that runs before every test method.
-
-        It deletes the JUPYTER_IMAGE_SPEC environment variable if it exists.
-        """
-        monkeypatch.delenv("JUPYTER_IMAGE_SPEC", raising=False)
-
-    def test_is_dapla_true(self) -> None:
-        """Test function to check is_dapla().
-
-        Returns True when the JUPYTER_IMAGE_SPEC
-        environment variable contains 'dapla-jupyterlab:latest'.
-        """
-        os.environ["JUPYTER_IMAGE_SPEC"] = "dapla-jupyterlab:latest"
-        assert is_dapla()
-
-    def test_is_dapla_false(self) -> None:
-        """Test function to check is_dapla().
-
-        Returns False when the JUPYTER_IMAGE_SPEC
-        environment variable does not contain 'dapla-jupyterlab:latest'.
-        """
-        os.environ["JUPYTER_IMAGE_SPEC"] = "some-other-jupyterlab:latest"
-        assert not is_dapla()
-
-    def test_is_dapla_no_env_variable(self) -> None:
-        """Test function to check is_dapla().
-
-        Returns False when the JUPYTER_IMAGE_SPEC
-        environment variable is not set.
-        """
-        assert not is_dapla()
 
 
 class TestFileInfo:

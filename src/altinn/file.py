@@ -1,11 +1,10 @@
 """This module contains the main function for running the Altinn application."""
 
-import os
-from typing import Optional
-
 from dapla import FileClient
 from defusedxml.ElementTree import ParseError
 from defusedxml.minidom import parseString
+
+from .utils import is_dapla
 
 
 def main() -> None:
@@ -14,17 +13,6 @@ def main() -> None:
     This function is called when the altinn package is run as a script.
     """
     pass
-
-
-def is_dapla() -> bool:
-    """Check whether the current environment is running a Dapla JupyterLab instance.
-
-    Returns:
-        bool: True if the current environment is running a Dapla JupyterLab instance,
-        False otherwise.
-    """
-    jupyter_image_spec: Optional[str] = os.environ.get("JUPYTER_IMAGE_SPEC")
-    return bool(jupyter_image_spec and "dapla-jupyterlab" in jupyter_image_spec)
 
 
 class FileInfo:
@@ -36,18 +24,12 @@ class FileInfo:
         Args:
             file_path (str): The path to the XML file.
         """
-        if is_dapla():
-            self.file_path = file_path
-        else:
+        self.file_path = file_path
+        if not is_dapla():
             print(
                 """FileInfo class can only be instantiated in a Dapla JupyterLab
                   environment."""
             )
-            # Alternatively, you can print a message and return,
-            # without raising an exception
-            # print("XmlFile class can only be instantiated in a Dapla
-            # JupyterLab environment.")
-            # return
 
     def filename(self) -> str:
         """Get the name of the XML file.
