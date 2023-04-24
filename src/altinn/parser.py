@@ -1,5 +1,7 @@
 """Parsing of Altinn xml-files."""
 
+import os
+
 import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
@@ -85,3 +87,51 @@ class ParseSingleXml:
         xml_dict = self.to_dict()
         df = pd.DataFrame([xml_dict])
         return df
+
+
+class ParseMultipleXml:
+    """This class handles multiple Altinn xml-files."""
+
+    def __init__(self, folder_path: str) -> None:
+        """Initialize a ParseMultipleXml object with the given folder path.
+
+        Args:
+            folder_path (str): The path to the folder containing XML files.
+        """
+        self.folder_path = folder_path
+        if not is_dapla():
+            print(
+                """ParseMultipleXml class can only be instantiated in a Dapla
+                   JupyterLab environment."""
+            )
+
+    def get_xml_files(self) -> list:
+        """Get all XML files in the folder path.
+
+        Returns:
+            list: A list of XML file paths.
+        """
+        fs = FileClient.get_gcs_file_system()
+        xml_files = []
+
+        for file in fs.glob(os.path.join(self.folder_path, "**", "*.xml")):
+            xml_files.append(file)
+
+        return xml_files
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Parse all XML files in the folder and it subfolders to a pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing data from all XML files.
+        """
+        xml_files = self.get_xml_files()
+        df_list = []
+
+        for file in xml_files:
+            parser = ParseSingleXml(file)
+            df = parser.to_dataframe()
+            df_list.append(df)
+
+        combined_df = pd.concat(df_list, ignore_index=True)
+        return combined_df
