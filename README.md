@@ -26,11 +26,15 @@
 This is work-in-progress Python-package for dealing with xml-data from Altinn3.
 
 ```python
-from altinn import FileInfo
+from altinn import FileInfo, ParseSingleXml
 
-form = FileInfo(
-    "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
-)
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+
+# Create an instance of FileInfo
+form = FileInfo(file)
+
+# Create an instance of ParseSingleXml
+form_content = ParseSingleXml(file)
 
 # Get file filename without '.xml'-postfix
 form.filename()
@@ -45,6 +49,12 @@ form.print()
 # Check if xml-file is valid. Useful to inspect xml-files with formal errors in the xml-schema.
 form.validate()
 # Returns True og False
+
+# Get a dictionary representation of the contents of the file
+form_content.to_dict()
+
+# Get a Pnadas Dataframe representation of the contents of the file
+form_content.to_dataframe()
 ```
 
 ## Requirements
