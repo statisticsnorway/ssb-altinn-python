@@ -9,8 +9,8 @@ import altinn.__main__ as main_module
 
 def test_main_direct_call():
     """Test that main() is called when altinn.__main__.main() is called."""
-    with patch("altinn.__main__.main") as mock_main:
-        main_module.main()
+    with patch("altinn.__main__.file_main") as mock_main:
+        main_module.file_main()
         mock_main.assert_called_once()
 
 
