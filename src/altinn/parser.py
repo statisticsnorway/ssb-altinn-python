@@ -1,9 +1,18 @@
 """Parsing of Altinn xml-files."""
 
+import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
 
 from .utils import is_dapla
+
+
+def main() -> None:
+    """Placeholder function for the main function.
+
+    This function is called when the altinn package is run as a script.
+    """
+    pass
 
 
 class ParseSingleXml:
@@ -66,3 +75,13 @@ class ParseSingleXml:
                 result_dict[tag] = value
 
         return result_dict
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Parse single XML file to a pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A DataFrame representation of the XML file.
+        """
+        xml_dict = self.to_dict()
+        df = pd.DataFrame([xml_dict])
+        return df
