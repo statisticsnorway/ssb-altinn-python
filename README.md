@@ -53,7 +53,7 @@ form.validate()
 # Get a dictionary representation of the contents of the file
 form_content.to_dict()
 
-# Get a Pnadas Dataframe representation of the contents of the file
+# Get a Pandas Dataframe representation of the contents of the file
 form_content.to_dataframe()
 ```
 
