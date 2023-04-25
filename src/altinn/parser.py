@@ -95,6 +95,11 @@ class ParseSingleXml:
         return df
 
 
+def parse_single_file(file: str) -> pd.DataFrame:
+    """Parse a single XML file to a pandas DataFrame."""
+    return ParseSingleXml(file).to_dataframe()
+
+
 class ParseMultipleXml:
     """This class handles multiple Altinn xml-files."""
 
@@ -136,11 +141,7 @@ class ParseMultipleXml:
         xml_files = self.get_xml_files()
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            results = list(
-                executor.map(
-                    lambda file: ParseSingleXml(file).to_dataframe(), xml_files
-                )
-            )
+            results = list(executor.map(parse_single_file, xml_files))
 
         combined_df = pd.concat(results, ignore_index=True, join="outer")
 
