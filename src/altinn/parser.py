@@ -1,5 +1,7 @@
 """Parsing of Altinn xml-files."""
 
+
+import multiprocessing
 import os
 
 import pandas as pd
@@ -126,12 +128,9 @@ class ParseMultipleXml:
             pd.DataFrame: A DataFrame containing data from all XML files.
         """
         xml_files = self.get_xml_files()
-        df_list = []
-
-        for file in xml_files:
-            parser = ParseSingleXml(file)
-            df = parser.to_dataframe()
-            df_list.append(df)
-
+        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+        df_list = pool.map(lambda file: ParseSingleXml(file).to_dataframe(), xml_files)
         combined_df = pd.concat(df_list, ignore_index=True, join="outer")
+        pool.close()
+
         return combined_df
