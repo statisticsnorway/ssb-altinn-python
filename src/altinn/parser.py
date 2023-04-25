@@ -128,9 +128,12 @@ class ParseMultipleXml:
             pd.DataFrame: A DataFrame containing data from all XML files.
         """
         xml_files = self.get_xml_files()
-        pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
-        df_list = pool.map(lambda file: ParseSingleXml(file).to_dataframe(), xml_files)
+
+        def parse_single_xml(file):
+            return ParseSingleXml(file).to_dataframe()
+
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            df_list = pool.map(parse_single_xml, xml_files)
         combined_df = pd.concat(df_list, ignore_index=True, join="outer")
-        pool.close()
 
         return combined_df
