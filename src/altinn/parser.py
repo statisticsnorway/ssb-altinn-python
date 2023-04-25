@@ -1,6 +1,6 @@
 """Parsing of Altinn xml-files."""
 
-
+import logging
 import multiprocessing
 import os
 
@@ -9,6 +9,10 @@ from dapla import FileClient
 from defusedxml import ElementTree
 
 from .utils import is_dapla
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename="mylog.log", level=logging.INFO)
 
 
 def main() -> None:
@@ -133,6 +137,8 @@ class ParseMultipleXml:
         Returns:
             pd.DataFrame: A DataFrame containing data from all XML files.
         """
+        logger.info("Starting parsing of XML files...")
+
         xml_files = self.get_xml_files()
 
         with multiprocessing.Manager() as manager:
@@ -145,9 +151,7 @@ class ParseMultipleXml:
                 pool.close()
                 pool.join()
 
-                if not pool._state:
-                    pool.join()
-
             combined_df = pd.concat(results_list, ignore_index=True, join="outer")
 
+        logger.info("Parsing of XML files complete.")
         return combined_df
