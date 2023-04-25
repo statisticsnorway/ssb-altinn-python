@@ -145,6 +145,9 @@ class ParseMultipleXml:
                 pool.close()
                 pool.join()
 
+                if not pool._state:
+                    pool.join()
+
             combined_df = pd.concat(results_list, ignore_index=True, join="outer")
 
         return combined_df
