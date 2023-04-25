@@ -120,7 +120,7 @@ class ParseMultipleXml:
         return xml_files
 
     def to_dataframe(self) -> pd.DataFrame:
-        """Parse all XML files in the folder and it subfolders to a pandas DataFrame.
+        """Parse all XML files in the folder and its subfolders to a pandas DataFrame.
 
         Returns:
             pd.DataFrame: A DataFrame containing data from all XML files.
@@ -133,5 +133,5 @@ class ParseMultipleXml:
             df = parser.to_dataframe()
             df_list.append(df)
 
-        combined_df = pd.concat(df_list, ignore_index=True)
+        combined_df = pd.concat(df_list, ignore_index=True, join="outer")
         return combined_df
