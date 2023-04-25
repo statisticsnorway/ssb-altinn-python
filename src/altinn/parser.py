@@ -91,9 +91,10 @@ class ParseSingleXml:
         return df
 
 
-def parse_single_xml(file):
-    """Parse single XML file to a pandas DataFrame."""
-    return ParseSingleXml(file).to_dataframe()
+def parse_single_xml(file, results_list):
+    """Parse single XML file and add result to shared list."""
+    result = ParseSingleXml(file).to_dataframe()
+    results_list.append(result)
 
 
 class ParseMultipleXml:
@@ -134,9 +135,16 @@ class ParseMultipleXml:
         """
         xml_files = self.get_xml_files()
 
-        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-            df_list = pool.map(parse_single_xml, xml_files)
+        with multiprocessing.Manager() as manager:
+            results_list = manager.list()
 
-        combined_df = pd.concat(df_list, ignore_index=True, join="outer")
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+                for file in xml_files:
+                    pool.apply_async(parse_single_xml, args=(file, results_list))
+
+                pool.close()
+                pool.join()
+
+            combined_df = pd.concat(results_list, ignore_index=True, join="outer")
 
         return combined_df
