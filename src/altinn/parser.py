@@ -91,6 +91,11 @@ class ParseSingleXml:
         return df
 
 
+def parse_single_xml(file):
+    """Parse single XML file to a pandas DataFrame."""
+    return ParseSingleXml(file).to_dataframe()
+
+
 class ParseMultipleXml:
     """This class handles multiple Altinn xml-files."""
 
@@ -129,11 +134,9 @@ class ParseMultipleXml:
         """
         xml_files = self.get_xml_files()
 
-        def parse_single_xml(file):
-            return ParseSingleXml(file).to_dataframe()
-
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             df_list = pool.map(parse_single_xml, xml_files)
+
         combined_df = pd.concat(df_list, ignore_index=True, join="outer")
 
         return combined_df
