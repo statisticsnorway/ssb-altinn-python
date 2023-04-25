@@ -1,7 +1,7 @@
 """Parsing of Altinn xml-files."""
 
+import concurrent.futures
 import logging
-import multiprocessing
 import os
 
 import pandas as pd
@@ -95,12 +95,6 @@ class ParseSingleXml:
         return df
 
 
-def parse_single_xml(file, results_list):
-    """Parse single XML file and add result to shared list."""
-    result = ParseSingleXml(file).to_dataframe()
-    results_list.append(result)
-
-
 class ParseMultipleXml:
     """This class handles multiple Altinn xml-files."""
 
@@ -141,17 +135,14 @@ class ParseMultipleXml:
 
         xml_files = self.get_xml_files()
 
-        with multiprocessing.Manager() as manager:
-            results_list = manager.list()
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            results = list(
+                executor.map(
+                    lambda file: ParseSingleXml(file).to_dataframe(), xml_files
+                )
+            )
 
-            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
-                for file in xml_files:
-                    pool.apply_async(parse_single_xml, args=(file, results_list))
-
-                pool.close()
-                pool.join()
-
-            combined_df = pd.concat(results_list, ignore_index=True, join="outer")
+        combined_df = pd.concat(results, ignore_index=True, join="outer")
 
         logger.info("Parsing of XML files complete.")
         return combined_df

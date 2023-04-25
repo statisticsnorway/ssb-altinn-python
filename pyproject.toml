@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ssb-altinn-python"
-version = "0.2.8"
+version = "0.2.9"
 description = "SSB Altinn Python"
 authors = ["Øyvind Bruer-Skarsbø <obr@ssb.no>"]
 license = "MIT"
