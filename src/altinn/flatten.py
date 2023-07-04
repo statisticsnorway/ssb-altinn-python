@@ -9,32 +9,56 @@ of Altinn3. This is done in a separate file.
 
 import pandas as pd
 from dapla import FileClient, AuthClient
-from google.cloud import storage
-from lxml import etree
-import codecs
+from defusedxml import ElementTree as etree
+import re
 
-
-def altinn3_flatten(bucket, filename):
+def altinn3_flatten(file):
     """
     Retrieves and processes an altinn3 XML file from the specified bucket.
     Flattens the XML data and returns a DataFrame.
 
     Args:
-        bucket (str): The name of the bucket where the file is stored.
-        filename (str): The name of the file that contains XML data.
+        file (str): The bucket and filename of the XML file, in one string.
 
     Returns:
         pandas.DataFrame: A DataFrame with flattened and transposed data from the XML file which contains internal info, contact info and form data.
     """
-    token = AuthClient.fetch_google_credentials()
-    client = storage.Client(credentials=token)
-    bucket_obj = client.get_bucket(bucket)
-    blob = bucket_obj.blob(filename)
-    blob_data = blob.download_as_bytes()
+    fs = FileClient.get_gcs_file_system()
 
-    xml_data = codecs.decode(blob_data, 'utf-8')
+    try:
+        with fs.open(file, mode="r") as f:
+            xml_data = f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError("The specified XML file was not found.")
+
+    element_counts = {}
+    regex_pattern = r'<([^/][^>]*)>'
+    matches = re.findall(regex_pattern, xml_data)
+    for match in matches:
+        if match not in element_counts:
+            element_counts[match] = 1
+        else:
+            element_counts[match] += 1
+
+    for element, count in element_counts.items():
+        if count > 1:
+            suffix_count = 1
+            for i, match in enumerate(matches):
+                if match == element:
+                    suffix = str(suffix_count)
+                    if re.search(r'\d+$', element):
+                        suffix = re.findall(r'\d+$', element)[0] + suffix
+                    old_tag = f'<{element}>'
+                    new_tag = f'<{element.rstrip("0123456789")}{suffix}>'
+                    xml_data = xml_data.replace(old_tag, new_tag, 1)
+
+                    old_end_tag = f'</{element}>'
+                    new_end_tag = f'</{element.rstrip("0123456789")}{suffix}>'
+                    xml_data = xml_data.replace(old_end_tag, new_end_tag, 1)
+
+                    suffix_count += 1
+
     xml_data = xml_data.replace('<?xml version="1.0" encoding="utf-8"?>', '')
-
     root = etree.fromstring(xml_data)
 
     intern_info = root.find("InternInfo")
@@ -46,12 +70,11 @@ def altinn3_flatten(bucket, filename):
     skjemadata = root.find("SkjemaData")
     skjemadata_dict = {e.tag: e.text for e in skjemadata.iter() if e.text and e.text.strip()}
 
-    start_index = filename.rfind('_') + 1
-    end_index = filename.rfind('.xml')
-    angiver = filename[start_index:end_index]
+    start_index = file.rfind('_') + 1
+    end_index = file.rfind('.xml')
+    angiver = file[start_index:end_index]
 
     internkontakt_df = pd.DataFrame({**intern_info_dict, **kontakt_dict}, index=[0])
-    internkontakt_df = internkontakt_df
     skjemadata_df = pd.DataFrame({**skjemadata_dict}, index=[0])
     skjemadata_df['ANGIVER_ID'] = angiver
 
@@ -63,8 +86,13 @@ def altinn3_flatten(bucket, filename):
 
     output = transposed.merge(internkontakt_df, how='left', on='key').drop(columns=['key'])
 
-    return output
+    for element, count in element_counts.items():
+        if count > 1:
+            matching_values = output.feltnavn[output.feltnavn.str.startswith(element)]
+            for value in matching_values:
+                output['feltnavn'] = output['feltnavn'].apply(lambda x: re.sub(r'\d+$', '', x) if x.startswith(element) else x)
 
+    return output
 
 def isee_transform(df, mapping={}):
     """
