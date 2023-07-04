@@ -9,10 +9,6 @@ from defusedxml import ElementTree
 from .utils import is_dapla
 
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename="mylog.log", level=logging.INFO)
-
-
 def main() -> None:
     """Placeholder function for the main function.
 
