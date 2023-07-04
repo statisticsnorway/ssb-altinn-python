@@ -1,7 +1,5 @@
 """Parsing of Altinn xml-files."""
 
-import logging
-
 import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
