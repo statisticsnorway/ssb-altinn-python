@@ -662,13 +662,13 @@ tox = ["tox"]
 
 [[package]]
 name = "dapla-toolbelt"
-version = "1.6.2"
+version = "1.8.0"
 description = "Python module for use within Jupyterlab notebooks, specifically aimed for Statistics Norway's data platform called Dapla"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "dapla_toolbelt-1.6.2-py3-none-any.whl", hash = "sha256:36cdc3a0fc8812b70c6e6b7dc97dfb71f707387628aec46d8f99aef64e7c383e"},
-    {file = "dapla_toolbelt-1.6.2.tar.gz", hash = "sha256:6870e72a4dfc20743c653889c88948de8504df4c646fe90a9ddcaf3fac9e8268"},
+    {file = "dapla_toolbelt-1.8.0-py3-none-any.whl", hash = "sha256:ecb6a84e6d648acd2d734e032049570cbd01f25423143cabca7184a90be1b999"},
+    {file = "dapla_toolbelt-1.8.0.tar.gz", hash = "sha256:29d64c5e340e94e03d9ed2dcfeb37c29d5f228a3e7cc6e2c32feded035717302"},
 ]
 
 [package.dependencies]
