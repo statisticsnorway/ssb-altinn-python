@@ -4,7 +4,7 @@ import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
 
-from .utils import is_dapla
+from .utils import is_dapla, is_valid_xml
 
 
 def main() -> None:
@@ -12,8 +12,7 @@ def main() -> None:
 
     This function is called when the altinn package is run as a script.
     """
-    pass
-
+    pass 
 
 class ParseSingleXml:
     """This class represents an Altinn application."""
@@ -25,56 +24,82 @@ class ParseSingleXml:
             file_path (str): The path to the XML file.
         """
         self.file_path = file_path
-        if not is_dapla():
+        if not is_valid_xml():
             print(
-                """FileInfo class can only be instantiated in a Dapla JupyterLab
-                  environment."""
+                """File is not a valid XML-file."""
             )
 
-    def to_dict(self) -> dict:
-        """Parse single XML file to a dictionary.
+    # Function to recursively traverse the XML tree and capture all tags
+    def traverse_xml(element, column_counter=1, data={}) -> dict[str, str]:
+        # Iterate over the sub-elements of the current element
+        for sub_element in element:
+            # Create the tag name
+            tag_name = sub_element.tag
+
+            # Check if the sub-element has children
+            if len(sub_element) > 0:
+                # Recursively traverse the child elements
+                traverse_xml(sub_element, column_counter, data)
+            else:
+                # Store the text content in the dictionary
+                if tag_name in data:
+                    if isinstance(data[tag_name], list):
+                        # Append the value to the existing list
+                        data[tag_name].append(sub_element.text)
+                    else:
+                        # Convert the existing value to a list and append the new value
+                        data[tag_name] = [data[tag_name], sub_element.text]
+                else:
+                    # If the tag doesn't exist, store the value in the dictionary
+                    data[tag_name] = sub_element.text
+
+                # Check if the tag name has duplicates
+                if tag_name in data and isinstance(data[tag_name], list):
+                    # Generate a unique column name for each occurrence
+                    column_name = f'{tag_name}_{column_counter}'
+
+                    # Create a new column for each value in the list
+                    for i, value in enumerate(data[tag_name], start=1):
+                        new_column_name = f'{tag_name}_{i}'
+                        data[new_column_name] = value
+
+                    # Remove the original duplicate tag column
+                    data.pop(tag_name)
+
+                    # Increment the column counter
+                    column_counter += 1
+        return data
+
+    def get_root_from_dapla(self):
+        """Read in XML-file from GCP-buckets on Dapla.
 
         Returns:
-            dict: A dictionary representation of the XML file.
+            ElementTree: A ElementTree-object representation of the XML file.
         """
         fs = FileClient.get_gcs_file_system()
         with fs.open(self.file_path, mode="r") as f:
             single_xml = f.read()
-
         root = ElementTree.fromstring(single_xml)
-        intern_info = root.find("InternInfo")
-        kontakt = root.find("Kontakt")
-        skjemadata = root.find("Skjemadata")
+        return root
 
-        data = []
-        all_tags = set()
+    def get_root_from_filsystem(self):
+        """Read in XML-file from classical filesystem.
 
-        for element in intern_info:
-            all_tags.add(element.tag)
+        Returns:
+            ElementTree: A ElementTree-object representation of the XML file.
+        """
+        tree = ElementTree.parse(self.file_path)
+        root = tree.getroot()
+        return root    
 
-        for element in kontakt:
-            all_tags.add(element.tag)
+    if is_dapla():
+        root = get_root_from_dapla(self.file_path)
+    else:
+        root = get_root_from_filesystem(self.file_path)
 
-        for element in skjemadata:
-            all_tags.add(element.tag)
-
-        result_dict = {}
-
-        for tag in all_tags:
-            element = intern_info.find(tag)
-            if element is None:
-                element = kontakt.find(tag)
-            if element is None:
-                element = skjemadata.find(tag)
-            if element is not None:
-                value = element.text
-                data.append(value)
-                result_dict[tag] = value
-            else:
-                data.append(None)
-                result_dict[tag] = None
-
-        return result_dict
+    
+    
+    
 
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.
@@ -82,6 +107,7 @@ class ParseSingleXml:
         Returns:
             pd.DataFrame: A DataFrame representation of the XML file.
         """
-        xml_dict = self.to_dict()
-        df = pd.DataFrame([xml_dict])
+        data = {}
+        traverse_xml(root, 1, data)
+        df = pd.DataFrame([data])
         return df
