@@ -4,7 +4,8 @@ import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
 
-from .utils import is_dapla, is_valid_xml
+from .utils import is_dapla
+from .utils import is_valid_xml
 
 
 def main() -> None:
@@ -12,7 +13,8 @@ def main() -> None:
 
     This function is called when the altinn package is run as a script.
     """
-    pass 
+    pass
+
 
 class ParseSingleXml:
     """This class represents an Altinn application."""
@@ -25,9 +27,7 @@ class ParseSingleXml:
         """
         self.file_path = file_path
         if not is_valid_xml():
-            print(
-                """File is not a valid XML-file."""
-            )
+            print("""File is not a valid XML-file.""")
 
     # Function to recursively traverse the XML tree and capture all tags
     def traverse_xml(element, column_counter=1, data={}) -> dict[str, str]:
@@ -56,11 +56,11 @@ class ParseSingleXml:
                 # Check if the tag name has duplicates
                 if tag_name in data and isinstance(data[tag_name], list):
                     # Generate a unique column name for each occurrence
-                    column_name = f'{tag_name}_{column_counter}'
+                    column_name = f"{tag_name}_{column_counter}"
 
                     # Create a new column for each value in the list
                     for i, value in enumerate(data[tag_name], start=1):
-                        new_column_name = f'{tag_name}_{i}'
+                        new_column_name = f"{tag_name}_{i}"
                         data[new_column_name] = value
 
                     # Remove the original duplicate tag column
@@ -90,16 +90,12 @@ class ParseSingleXml:
         """
         tree = ElementTree.parse(self.file_path)
         root = tree.getroot()
-        return root    
+        return root
 
     if is_dapla():
         root = get_root_from_dapla(self.file_path)
     else:
         root = get_root_from_filesystem(self.file_path)
-
-    
-    
-    
 
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.

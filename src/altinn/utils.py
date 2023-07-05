@@ -2,9 +2,11 @@
 
 import os
 from typing import Optional
+
 from dapla import FileClient
 from defusedxml.ElementTree import ParseError
 from defusedxml.minidom import parseString
+
 
 def is_dapla() -> bool:
     """Check whether the current environment is running a Dapla JupyterLab instance.
@@ -15,6 +17,7 @@ def is_dapla() -> bool:
     """
     jupyter_image_spec: Optional[str] = os.environ.get("JUPYTER_IMAGE_SPEC")
     return bool(jupyter_image_spec and "dapla-jupyterlab" in jupyter_image_spec)
+
 
 def is_valid_xml(file_path) -> bool:
     """Check whether the file is valid XML.
@@ -32,7 +35,7 @@ def is_valid_xml(file_path) -> bool:
             return False
     else:
         try:
-            with open(file_path, 'r') as file:
+            with open(file_path) as file:
                 parseString(file.read())
                 return True
         except ParseError:
