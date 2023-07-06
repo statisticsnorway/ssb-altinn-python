@@ -22,6 +22,9 @@ def is_dapla() -> bool:
 def is_valid_xml(file_path) -> bool:
     """Check whether the file is valid XML.
 
+    Args:
+        file_path (str): The path to the XML file.
+
     Returns:
         bool: True if the XML is valid,
         False otherwise.
