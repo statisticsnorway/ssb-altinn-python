@@ -45,5 +45,20 @@ def isee_transform(file_path, mapping=None):
 
     angiver_id = extract_angiver_id()
 
-    df = df.assign(angiver_id=angiver_id)
-    return df
+    skjemadata_df = df.filter(regex="^Skjemadata_")
+
+    skjemadata_df = skjemadata_df.assign(ANGIVER_ID=angiver_id)
+
+    skjemadata_df_columns = skjemadata_df.columns.tolist()
+
+    skjemadata_df_columns.remove("ANGIVER_ID")
+
+    all_others_df = df.drop(columns=skjemadata_df_columns)
+
+    all_others_df = all_others_df.assign(skjemaVersjon=angiver_id)
+
+    skjemadata_transposed = skjemadata_df.transpose().reset_index()
+
+    skjemadata_transposed.columns = ["feltnavn", "feltverdi"]
+
+    return skjemadata_transposed
