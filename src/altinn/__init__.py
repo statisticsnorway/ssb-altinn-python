@@ -1,8 +1,8 @@
 """SSB Altinn Python."""
 
 from .file import FileInfo
-from .parser import ParseMultipleXml
+from .flatten import isee_transform
 from .parser import ParseSingleXml
 
 
-__all__ = ["FileInfo", "ParseSingleXml", "ParseMultipleXml"]
+__all__ = ["FileInfo", "ParseSingleXml", "isee_transform"]

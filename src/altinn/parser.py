@@ -1,18 +1,15 @@
-"""Parsing of Altinn xml-files."""
+"""This module contains the main function for running the Altinn application."""
 
-import concurrent.futures
-import logging
-import os
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
 
 from .utils import is_dapla
-
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename="mylog.log", level=logging.INFO)
+from .utils import is_valid_xml
 
 
 def main() -> None:
@@ -33,56 +30,76 @@ class ParseSingleXml:
             file_path (str): The path to the XML file.
         """
         self.file_path = file_path
-        if not is_dapla():
-            print(
-                """FileInfo class can only be instantiated in a Dapla JupyterLab
-                  environment."""
-            )
+        if not is_valid_xml(self.file_path):
+            print("""File is not a valid XML-file.""")
 
-    def to_dict(self) -> dict:
-        """Parse single XML file to a dictionary.
+    def traverse_xml(
+        self, element, column_counter=1, data: Optional[Dict[str, Any]] = None
+    ):
+        """Recursively traverse an XML element and extract data.
+
+        Args:
+            element: The XML element to traverse.
+            column_counter (int): The counter for generating unique column names.
+            data (dict or None): The dictionary to store the extracted data.
 
         Returns:
-            dict: A dictionary representation of the XML file.
+            dict: The dictionary containing the extracted data.
+        """
+        if data is None:
+            data = {}
+
+        def recursive_traverse(element, column_counter, data, prefix):
+            for sub_element in element:
+                tag_name = sub_element.tag
+                full_tag_name = prefix + "_" + tag_name if prefix else tag_name
+
+                if len(sub_element) > 0:
+                    recursive_traverse(sub_element, column_counter, data, full_tag_name)
+                else:
+                    if full_tag_name in data:
+                        if isinstance(data[full_tag_name], list):
+                            data[full_tag_name].append(sub_element.text)
+                        else:
+                            data[full_tag_name] = [
+                                data[full_tag_name],
+                                sub_element.text,
+                            ]
+                    else:
+                        data[full_tag_name] = sub_element.text
+
+                    if full_tag_name in data and isinstance(data[full_tag_name], list):
+                        for i, value in enumerate(data[full_tag_name], start=1):
+                            new_column_name = f"{full_tag_name}_{i}"
+                            data[new_column_name] = value
+                        del data[full_tag_name]  # delete original non-numbered key
+                        column_counter += 1
+
+        for child in element:
+            recursive_traverse(child, column_counter, data, child.tag)
+        return data
+
+    def get_root_from_dapla(self):
+        """Read in XML-file from GCP-buckets on Dapla.
+
+        Returns:
+            ElementTree: A ElementTree-object representation of the XML file.
         """
         fs = FileClient.get_gcs_file_system()
         with fs.open(self.file_path, mode="r") as f:
             single_xml = f.read()
-
         root = ElementTree.fromstring(single_xml)
-        intern_info = root.find("InternInfo")
-        kontakt = root.find("Kontakt")
-        skjemadata = root.find("Skjemadata")
+        return root
 
-        data = []
-        all_tags = set()
+    def get_root_from_filesystem(self):
+        """Read in XML-file from classical filesystem.
 
-        for element in intern_info:
-            all_tags.add(element.tag)
-
-        for element in kontakt:
-            all_tags.add(element.tag)
-
-        for element in skjemadata:
-            all_tags.add(element.tag)
-
-        result_dict = {}
-
-        for tag in all_tags:
-            element = intern_info.find(tag)
-            if element is None:
-                element = kontakt.find(tag)
-            if element is None:
-                element = skjemadata.find(tag)
-            if element is not None:
-                value = element.text
-                data.append(value)
-                result_dict[tag] = value
-            else:
-                data.append(None)
-                result_dict[tag] = None
-
-        return result_dict
+        Returns:
+            ElementTree: A ElementTree-object representation of the XML file.
+        """
+        tree = ElementTree.parse(self.file_path)
+        root = tree.getroot()
+        return root
 
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.
@@ -90,60 +107,11 @@ class ParseSingleXml:
         Returns:
             pd.DataFrame: A DataFrame representation of the XML file.
         """
-        xml_dict = self.to_dict()
-        df = pd.DataFrame([xml_dict])
+        if is_dapla():
+            root = self.get_root_from_dapla()
+        else:
+            root = self.get_root_from_filesystem()
+        data: Dict[str, Any] = {}
+        self.traverse_xml(root, 1, data)
+        df = pd.DataFrame([data])
         return df
-
-
-def parse_single_file(file: str) -> pd.DataFrame:
-    """Parse a single XML file to a pandas DataFrame."""
-    return ParseSingleXml(file).to_dataframe()
-
-
-class ParseMultipleXml:
-    """This class handles multiple Altinn xml-files."""
-
-    def __init__(self, folder_path: str) -> None:
-        """Initialize a ParseMultipleXml object with the given folder path.
-
-        Args:
-            folder_path (str): The path to the folder containing XML files.
-        """
-        self.folder_path = folder_path
-        if not is_dapla():
-            print(
-                """ParseMultipleXml class can only be instantiated in a Dapla
-                   JupyterLab environment."""
-            )
-
-    def get_xml_files(self) -> list:
-        """Get all XML files in the folder path.
-
-        Returns:
-            list: A list of XML file paths.
-        """
-        fs = FileClient.get_gcs_file_system()
-        xml_files = []
-
-        for file in fs.glob(os.path.join(self.folder_path, "**", "*.xml")):
-            xml_files.append(file)
-
-        return xml_files
-
-    def to_dataframe(self) -> pd.DataFrame:
-        """Parse all XML files in the folder and its subfolders to a pandas DataFrame.
-
-        Returns:
-            pd.DataFrame: A DataFrame containing data from all XML files.
-        """
-        logger.info("Starting parsing of XML files...")
-
-        xml_files = self.get_xml_files()
-
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            results = list(executor.map(parse_single_file, xml_files))
-
-        combined_df = pd.concat(results, ignore_index=True, join="outer")
-
-        logger.info("Parsing of XML files complete.")
-        return combined_df
