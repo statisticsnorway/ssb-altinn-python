@@ -6,7 +6,6 @@ generic functions that should support all types of xml-forms. It requires
 the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
-import pandas as pd
 
 from .parser import ParseSingleXml
 
@@ -35,8 +34,7 @@ def isee_transform(file_path, mapping=None):
     df = xml_parser.to_dataframe()
 
     def extract_angiver_id():
-        """Extracts the text after "/form_" and before ".xml" in string."""
-    
+        """Extracts angiver_id from file_path."""
         start_index = file_path.find("/form_") + len("/form_")
         end_index = file_path.find(".xml", start_index)
         if start_index != -1 and end_index != -1:
@@ -44,9 +42,8 @@ def isee_transform(file_path, mapping=None):
             return extracted_text
         else:
             return None
-    
+
     angiver_id = extract_angiver_id()
 
     df = df.assign(angiver_id=angiver_id)
-
     return df
