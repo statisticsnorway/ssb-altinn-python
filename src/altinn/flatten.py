@@ -8,7 +8,7 @@ of Altinn3. This is done in a separate file.
 """
 
 
-def isee_transform(df, mapping={}):
+def isee_transform(df, mapping=None):
     """Transforms dataframe to ISEE-format.
 
     Transforms the given DataFrame by selecting certain columns and renaming
@@ -26,6 +26,9 @@ def isee_transform(df, mapping={}):
         pandas.DataFrame: A transformed DataFrame which aligns with the ISEE
         format.
     """
+    if mapping is None:
+        mapping = {}
+
     df = df.rename(
         columns={
             "raNummer": "Skjema_id",
