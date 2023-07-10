@@ -49,32 +49,34 @@ class ParseSingleXml:
         if data is None:
             data = {}
 
-        def recursive_traverse(element, column_counter, data):
+        def recursive_traverse(element, column_counter, data, prefix):
             for sub_element in element:
                 tag_name = sub_element.tag
+                full_tag_name = prefix + "_" + tag_name if prefix else tag_name
 
                 if len(sub_element) > 0:
-                    recursive_traverse(sub_element, column_counter, data)
+                    recursive_traverse(sub_element, column_counter, data, full_tag_name)
                 else:
-                    if tag_name in data:
-                        if isinstance(data[tag_name], list):
-                            data[tag_name].append(sub_element.text)
+                    if full_tag_name in data:
+                        if isinstance(data[full_tag_name], list):
+                            data[full_tag_name].append(sub_element.text)
                         else:
-                            data[tag_name] = [data[tag_name], sub_element.text]
+                            data[full_tag_name] = [
+                                data[full_tag_name],
+                                sub_element.text,
+                            ]
                     else:
-                        data[tag_name] = sub_element.text
+                        data[full_tag_name] = sub_element.text
 
-                    if tag_name in data and isinstance(data[tag_name], list):
-                        # Unused variable `column_name` removed
-                        for i, value in enumerate(data[tag_name], start=1):
-                            new_column_name = f"{tag_name}_{i}"
+                    if full_tag_name in data and isinstance(data[full_tag_name], list):
+                        for i, value in enumerate(data[full_tag_name], start=1):
+                            new_column_name = f"{full_tag_name}_{i}"
                             data[new_column_name] = value
-
-                        data.pop(tag_name)
-
+                        del data[full_tag_name]  # delete original non-numbered key
                         column_counter += 1
 
-        recursive_traverse(element, column_counter, data)
+        for child in element:
+            recursive_traverse(child, column_counter, data, child.tag)
         return data
 
     def get_root_from_dapla(self):
