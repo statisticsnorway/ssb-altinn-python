@@ -31,7 +31,8 @@ def isee_transform(file_path, mapping=None):
     if mapping is None:
         mapping = {}
 
-    df = ParseSingleXml.to_dataframe(file_path)
+    xml_parser = ParseSingleXml(file_path)
+    df = xml_parser.to_dataframe()
 
     def extract_angiver_id():
         """Extracts the text after "/form_" and before ".xml" in string."""
