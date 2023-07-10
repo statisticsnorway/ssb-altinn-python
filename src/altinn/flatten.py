@@ -17,14 +17,14 @@ def isee_transform(df, mapping=None):
 
     Args:
         df (pandas.DataFrame): A DataFrame containing flattened data extracted
-        from an altinn3 XML file.
+            from an altinn3 XML file.
         mapping (dict): The mapping dictionary to map variable names in the
-        'feltnavn' column. The default value is an empty dictionary
-        (if mapping is not needed).
+            'feltnavn' column. The default value is an empty dictionary
+            (if mapping is not needed).
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the ISEE
-        format.
+            format.
     """
     if mapping is None:
         mapping = {}

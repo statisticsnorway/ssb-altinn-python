@@ -1,11 +1,10 @@
 """This module contains the main function for running the Altinn application."""
 
-import pandas as pd
 from dapla import FileClient
-from defusedxml import ElementTree
+from defusedxml.ElementTree import ParseError
+from defusedxml.minidom import parseString
 
 from .utils import is_dapla
-from .utils import is_valid_xml
 
 
 def main() -> None:
@@ -16,7 +15,7 @@ def main() -> None:
     pass
 
 
-class ParseSingleXml:
+class FileInfo:
     """This class represents an Altinn application."""
 
     def __init__(self, file_path: str) -> None:
@@ -26,84 +25,40 @@ class ParseSingleXml:
             file_path (str): The path to the XML file.
         """
         self.file_path = file_path
-        if not is_valid_xml(self.file_path):
-            print("""File is not a valid XML-file.""")
+        if not is_dapla():
+            print(
+                """FileInfo class can only be instantiated in a Dapla JupyterLab
+                  environment."""
+            )
 
-    def traverse_xml(self, element, column_counter=1, data=None):
-        """Recursively traverse an XML element and extract data.
-
-        Args:
-            element: The XML element to traverse.
-            column_counter (int): The counter for generating unique column names.
-            data (dict or None): The dictionary to store the extracted data.
+    def filename(self) -> str:
+        """Get the name of the XML file.
 
         Returns:
-            dict: The dictionary containing the extracted data.
+            str: The name of the XML file.
         """
-        if data is None:
-            data = {}
+        split_path = self.file_path.split("/")
+        return split_path[-1][:-4]
 
-        def recursive_traverse(element, column_counter, data):
-            for sub_element in element:
-                tag_name = sub_element.tag
-
-                if len(sub_element) > 0:
-                    recursive_traverse(sub_element, column_counter, data)
-                else:
-                    if tag_name in data:
-                        if isinstance(data[tag_name], list):
-                            data[tag_name].append(sub_element.text)
-                        else:
-                            data[tag_name] = [data[tag_name], sub_element.text]
-                    else:
-                        data[tag_name] = sub_element.text
-
-                    if tag_name in data and isinstance(data[tag_name], list):
-                        # Unused variable `column_name` removed
-                        for i, value in enumerate(data[tag_name], start=1):
-                            new_column_name = f"{tag_name}_{i}"
-                            data[new_column_name] = value
-
-                        data.pop(tag_name)
-
-                        column_counter += 1
-
-        recursive_traverse(element, column_counter, data)
-        return data
-
-    def get_root_from_dapla(self):
-        """Read in XML-file from GCP-buckets on Dapla.
-
-        Returns:
-            ElementTree: A ElementTree-object representation of the XML file.
-        """
+    def pretty_print(self) -> None:
+        """Print formatted version of an xml-file."""
         fs = FileClient.get_gcs_file_system()
-        with fs.open(self.file_path, mode="r") as f:
-            single_xml = f.read()
-        root = ElementTree.fromstring(single_xml)
-        return root
+        dom = parseString(fs.cat_file(self.file_path))
+        pretty_xml = dom.toprettyxml(indent="  ")
+        print(pretty_xml)
 
-    def get_root_from_filesystem(self):
-        """Read in XML-file from classical filesystem.
+    def print(self) -> None:
+        """Print unformatted version of an XML file."""
+        fs = FileClient.get_gcs_file_system()
+        file = fs.cat_file(self.file_path)
+        print(file.decode())
 
-        Returns:
-            ElementTree: A ElementTree-object representation of the XML file.
-        """
-        tree = ElementTree.parse(self.file_path)
-        root = tree.getroot()
-        return root
+    def validate(self) -> bool:
+        """Validate the XML file."""
+        fs = FileClient.get_gcs_file_system()
+        try:
+            parseString(fs.cat_file(self.file_path))
+            return True
 
-    def to_dataframe(self) -> pd.DataFrame:
-        """Parse single XML file to a pandas DataFrame.
-
-        Returns:
-            pd.DataFrame: A DataFrame representation of the XML file.
-        """
-        if is_dapla():
-            root = self.get_root_from_dapla()
-        else:
-            root = self.get_root_from_filesystem()
-        data = {}
-        self.traverse_xml(root, 1, data)
-        df = pd.DataFrame([data])
-        return df
+        except ParseError:
+            return False

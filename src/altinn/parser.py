@@ -1,4 +1,8 @@
-"""Parsing of Altinn xml-files."""
+"""This module contains the main function for running the Altinn application."""
+
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 import pandas as pd
 from dapla import FileClient
@@ -26,48 +30,51 @@ class ParseSingleXml:
             file_path (str): The path to the XML file.
         """
         self.file_path = file_path
-        if not is_valid_xml():
+        if not is_valid_xml(self.file_path):
             print("""File is not a valid XML-file.""")
 
-    # Function to recursively traverse the XML tree and capture all tags
-    def traverse_xml(element, column_counter=1, data={}) -> dict[str, str]:
-        # Iterate over the sub-elements of the current element
-        for sub_element in element:
-            # Create the tag name
-            tag_name = sub_element.tag
+    def traverse_xml(
+        self, element, column_counter=1, data: Optional[Dict[str, Any]] = None
+    ):
+        """Recursively traverse an XML element and extract data.
 
-            # Check if the sub-element has children
-            if len(sub_element) > 0:
-                # Recursively traverse the child elements
-                traverse_xml(sub_element, column_counter, data)
-            else:
-                # Store the text content in the dictionary
-                if tag_name in data:
-                    if isinstance(data[tag_name], list):
-                        # Append the value to the existing list
-                        data[tag_name].append(sub_element.text)
-                    else:
-                        # Convert the existing value to a list and append the new value
-                        data[tag_name] = [data[tag_name], sub_element.text]
+        Args:
+            element: The XML element to traverse.
+            column_counter (int): The counter for generating unique column names.
+            data (dict or None): The dictionary to store the extracted data.
+
+        Returns:
+            dict: The dictionary containing the extracted data.
+        """
+        if data is None:
+            data = {}
+
+        def recursive_traverse(element, column_counter, data):
+            for sub_element in element:
+                tag_name = sub_element.tag
+
+                if len(sub_element) > 0:
+                    recursive_traverse(sub_element, column_counter, data)
                 else:
-                    # If the tag doesn't exist, store the value in the dictionary
-                    data[tag_name] = sub_element.text
+                    if tag_name in data:
+                        if isinstance(data[tag_name], list):
+                            data[tag_name].append(sub_element.text)
+                        else:
+                            data[tag_name] = [data[tag_name], sub_element.text]
+                    else:
+                        data[tag_name] = sub_element.text
 
-                # Check if the tag name has duplicates
-                if tag_name in data and isinstance(data[tag_name], list):
-                    # Generate a unique column name for each occurrence
-                    column_name = f"{tag_name}_{column_counter}"
+                    if tag_name in data and isinstance(data[tag_name], list):
+                        # Unused variable `column_name` removed
+                        for i, value in enumerate(data[tag_name], start=1):
+                            new_column_name = f"{tag_name}_{i}"
+                            data[new_column_name] = value
 
-                    # Create a new column for each value in the list
-                    for i, value in enumerate(data[tag_name], start=1):
-                        new_column_name = f"{tag_name}_{i}"
-                        data[new_column_name] = value
+                        data.pop(tag_name)
 
-                    # Remove the original duplicate tag column
-                    data.pop(tag_name)
+                        column_counter += 1
 
-                    # Increment the column counter
-                    column_counter += 1
+        recursive_traverse(element, column_counter, data)
         return data
 
     def get_root_from_dapla(self):
@@ -82,7 +89,7 @@ class ParseSingleXml:
         root = ElementTree.fromstring(single_xml)
         return root
 
-    def get_root_from_filsystem(self):
+    def get_root_from_filesystem(self):
         """Read in XML-file from classical filesystem.
 
         Returns:
@@ -92,18 +99,17 @@ class ParseSingleXml:
         root = tree.getroot()
         return root
 
-    if is_dapla():
-        root = get_root_from_dapla(self.file_path)
-    else:
-        root = get_root_from_filesystem(self.file_path)
-
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.
 
         Returns:
             pd.DataFrame: A DataFrame representation of the XML file.
         """
-        data = {}
-        traverse_xml(root, 1, data)
+        if is_dapla():
+            root = self.get_root_from_dapla()
+        else:
+            root = self.get_root_from_filesystem()
+        data: Dict[str, Any] = {}
+        self.traverse_xml(root, 1, data)
         df = pd.DataFrame([data])
         return df
