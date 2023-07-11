@@ -16,8 +16,8 @@
 [status]: https://pypi.org/project/ssb-altinn-python/
 [python version]: https://pypi.org/project/ssb-altinn-python
 [read the docs]: https://ssb-altinn-python.readthedocs.io/
-[tests]: https://github.com/skars82/ssb-altinn-python/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/skars82/ssb-altinn-python
+[tests]: https://github.com/statisticsnorway/ssb-altinn-python/actions?workflow=Tests
+[codecov]: https://app.codecov.io/gh/statisticsnorway/ssb-altinn-python
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
