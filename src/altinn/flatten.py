@@ -64,9 +64,9 @@ def isee_transform(file_path, mapping=None):
         "InternInfo_enhetsType": "Enhets_type",
     }
 
-    df_isee = df_isee.melt(intern_cols, var_name="feltnavn", value_name="feltverdi").rename(
-        columns=isee_rename
-    )
+    df_isee = df_isee.melt(
+        intern_cols, var_name="feltnavn", value_name="feltverdi"
+    ).rename(columns=isee_rename)
 
     df_isee["feltnavn"] = (
         df_isee["feltnavn"]
@@ -77,6 +77,5 @@ def isee_transform(file_path, mapping=None):
     if mapping is not None:
         df_isee["feltnavn"].replace(mapping, inplace=True)
 
-    df_isee['version_nr'] = angiver_id
-
+    df_isee["version_nr"] = angiver_id
     return df_isee
