@@ -13,9 +13,10 @@ from .parser import ParseSingleXml
 def isee_transform(file_path, mapping=None):
     """Transforms XML to ISEE-format.
 
-    Transforms the XML file to align with the ISEE dynarev format by flattening the file,
-    selecting necessary columns and renaming
-    them. Optionally renames the feltnavn values to the correct ISEE variable names.
+    Transforms the XML file to align with the ISEE dynarev format by
+    flattening the file, selecting necessary columns and renaming
+    them. Optionally renames the feltnavn values to
+    the correct ISEE variable names.
 
     Args:
         file_path (str): The path to the XML file.
@@ -24,8 +25,8 @@ def isee_transform(file_path, mapping=None):
             (if mapping is not needed).
 
     Returns:
-        pandas.DataFrame: A transformed DataFrame which aligns with the ISEE dynarev
-            format.
+        pandas.DataFrame: A transformed DataFrame which aligns with the
+        ISEE dynarev format.
     """
     if mapping is None:
         mapping = {}
