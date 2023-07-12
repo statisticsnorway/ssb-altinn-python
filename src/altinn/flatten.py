@@ -13,7 +13,8 @@ from .parser import ParseSingleXml
 def isee_transform(file_path, mapping=None):
     """Transforms XML to ISEE-format.
 
-    Transforms the XML file to align with the ISEE dynarev format by flattening the file, selecting necessary columns and renaming
+    Transforms the XML file to align with the ISEE dynarev format by flattening the file,
+    selecting necessary columns and renaming
     them. Optionally renames the feltnavn values to the correct ISEE variable names.
 
     Args:
