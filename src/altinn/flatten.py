@@ -1,8 +1,8 @@
 """For flattening Altinn3 xml.files for Dynarev-base in Oracle.
 
 This module contains the functions for flattening the Altinn3 xml-files that
-should be loaded into our on-prem Oracle database for Dynarev-base. This are
-generic functions that should support all types of xml-forms. It requires
+should be loaded into our on-prem Oracle database for Dynarev-base. These generic
+functions currently supports xml files that do not contain kodelister. It requires
 the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
@@ -11,11 +11,10 @@ from .parser import ParseSingleXml
 
 
 def isee_transform(file_path, mapping=None):
-    """Transforms dataframe to ISEE-format.
+    """Transforms XML to ISEE-format.
 
-    Transforms the given DataFrame by selecting certain columns and renaming
-    them to align with the ISEE format. Optionally renames the feltnavn values
-    to the correct ISEE variable names.
+    Transforms the XML file to align with the ISEE dynarev format by flattening the file, selecting necessary columns and renaming
+    them. Optionally renames the feltnavn values to the correct ISEE variable names.
 
     Args:
         file_path (str): The path to the XML file.
@@ -24,7 +23,7 @@ def isee_transform(file_path, mapping=None):
             (if mapping is not needed).
 
     Returns:
-        pandas.DataFrame: A transformed DataFrame which aligns with the ISEE
+        pandas.DataFrame: A transformed DataFrame which aligns with the ISEE dynarev
             format.
     """
     if mapping is None:
@@ -45,20 +44,39 @@ def isee_transform(file_path, mapping=None):
 
     angiver_id = extract_angiver_id()
 
-    skjemadata_df = df.filter(regex="^Skjemadata_")
+    df["SkjemaData_ANGIVER_ID"] = angiver_id
 
-    skjemadata_df = skjemadata_df.assign(ANGIVER_ID=angiver_id)
+    skjemadata_cols = df.filter(regex="^SkjemaData").columns.tolist()
 
-    skjemadata_df_columns = skjemadata_df.columns.tolist()
+    intern_cols = [
+        "InternInfo_raNummer",
+        "InternInfo_delregNr",
+        "InternInfo_enhetsIdent",
+        "InternInfo_enhetsType",
+    ]
 
-    skjemadata_df_columns.remove("ANGIVER_ID")
+    df_isee = df[intern_cols + skjemadata_cols]
 
-    all_others_df = df.drop(columns=skjemadata_df_columns)
+    isee_rename = {
+        "InternInfo_raNummer": "Skjema_id",
+        "InternInfo_delregNr": "Delreg_nr",
+        "InternInfo_enhetsIdent": "Ident_nr",
+        "InternInfo_enhetsType": "Enhets_type",
+    }
 
-    all_others_df = all_others_df.assign(skjemaVersjon=angiver_id)
+    df_isee = df_isee.melt(intern_cols, var_name="feltnavn", value_name="feltverdi").rename(
+        columns=isee_rename
+    )
 
-    skjemadata_transposed = skjemadata_df.transpose().reset_index()
+    df_isee["feltnavn"] = (
+        df_isee["feltnavn"]
+        .str.removeprefix("SkjemaData_")
+        .str.rstrip("0123456789")
+        .str.removesuffix("_")
+    )
+    if mapping is not None:
+        df_isee["feltnavn"].replace(mapping, inplace=True)
 
-    skjemadata_transposed.columns = ["feltnavn", "feltverdi"]
+    df_isee['version_nr'] = angiver_id
 
-    return skjemadata_transposed
+    return df_isee
