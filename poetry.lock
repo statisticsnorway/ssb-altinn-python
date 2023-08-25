@@ -678,13 +678,13 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "dapla-toolbelt"
-version = "1.8.1"
+version = "1.8.2"
 description = "Python module for use within Jupyterlab notebooks, specifically aimed for Statistics Norway's data platform called Dapla"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "dapla_toolbelt-1.8.1-py3-none-any.whl", hash = "sha256:cfd1ee537abc87296ae64b20d2485a364cac1ad6e138093956443206cf28dc52"},
-    {file = "dapla_toolbelt-1.8.1.tar.gz", hash = "sha256:6a7e3d63a0545cd76369bcf5444684ae900b30a12d2d8a1e3631223bfd423882"},
+    {file = "dapla_toolbelt-1.8.2-py3-none-any.whl", hash = "sha256:47d24e92072d703c4c40f14c3fda183d1efd7c2bf7f36107770336ff49c77131"},
+    {file = "dapla_toolbelt-1.8.2.tar.gz", hash = "sha256:e81baa724e331d11202527136a7fa0f084e3c9985ff664de113b067fed79df67"},
 ]
 
 [package.dependencies]
