@@ -59,8 +59,12 @@ from altinn import ParseSingleXml
 
 file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 
+form_content=ParseSingleXml(file)
+
 # Get a Pandas Dataframe representation of the contents of the file
-form_content.to_dataframe()
+df=form_content.to_dataframe()
+
+df.head()
 ```
 
 ### Tramsform to ISEE-Dynarev format
