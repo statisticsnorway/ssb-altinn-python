@@ -16,7 +16,7 @@ def is_dapla() -> bool:
         False otherwise.
     """
     jupyter_image_spec: Optional[str] = os.environ.get("JUPYTER_IMAGE_SPEC")
-    return bool(jupyter_image_spec and "dapla-jupyterlab" in jupyter_image_spec)
+    return bool(jupyter_image_spec and "jupyterlab-dapla" in jupyter_image_spec)
 
 
 def is_valid_xml(file_path) -> bool:
