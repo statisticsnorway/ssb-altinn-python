@@ -23,7 +23,7 @@ class TestIsDapla:
         """Test function to check is_dapla().
 
         Returns True when the JUPYTER_IMAGE_SPEC
-        environment variable contains 'dapla-jupyterlab:latest'.
+        environment variable contains 'jupyterlab-dapla:latest'.
         """
-        os.environ["JUPYTER_IMAGE_SPEC"] = "dapla-jupyterlab:latest"
+        os.environ["JUPYTER_IMAGE_SPEC"] = "jupyterlab-dapla:latest"
         assert is_dapla()
