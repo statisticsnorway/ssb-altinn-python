@@ -1,5 +1,5 @@
 """This module contains the main function for running the Altinn application."""
-
+import os
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -8,7 +8,7 @@ import pandas as pd
 from dapla import FileClient
 from defusedxml import ElementTree
 
-from .utils import is_dapla
+from .utils import is_gcs
 from .utils import is_valid_xml
 
 
@@ -29,7 +29,8 @@ class ParseSingleXml:
         Args:
             file_path (str): The path to the XML file.
         """
-        self.file_path = file_path
+        expanded_path = os.path.expanduser(file_path)
+        self.file_path = expanded_path
         if not is_valid_xml(self.file_path):
             print("""File is not a valid XML-file.""")
 
@@ -107,7 +108,7 @@ class ParseSingleXml:
         Returns:
             pd.DataFrame: A DataFrame representation of the XML file.
         """
-        if is_dapla():
+        if is_gcs(self.file_path):
             root = self.get_root_from_dapla()
         else:
             root = self.get_root_from_filesystem()

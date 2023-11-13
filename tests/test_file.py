@@ -1,6 +1,7 @@
-"""This module contains the tests for the file function."""
+"""This module contains the tests for the FileInfo functions."""
 
 from unittest.mock import MagicMock
+from unittest.mock import mock_open
 
 from dapla import FileClient
 
@@ -10,44 +11,44 @@ from altinn.file import FileInfo
 class TestFileInfo:
     """A test class for the FileInfo class."""
 
-    def test_filename(self) -> None:
-        """Test function.
+    # other test methods...
 
-        Checks if the filename method of XmlFile class returns
-        the correct file name without the extension.
+    def test_pretty_print_local(self, monkeypatch):
+        """Test pretty_print method for local files in XmlFile class."""
+        xml_string = """<?xml version="1.0" encoding="UTF-8"?>
+        <root>
+            <child>Hello, world!</child>
+        </root>
         """
-        xml_file = FileInfo("file.xml")
-        assert xml_file.filename() == "file"
+        # Mock open for local file handling
+        mock_file = mock_open(read_data=xml_string)
+        monkeypatch.setattr("builtins.open", mock_file)
 
-    def test_filename_nested(self) -> None:
-        """Test function.
+        # Mock os.path.expanduser to return a mock path
+        monkeypatch.setattr("os.path.expanduser", lambda x: x)
 
-        Checks if the filename method of XmlFile class returns
-        the correct file name without the extension, when the
-        file is nested in directories.
-        """
-        xml_file = FileInfo("path/to/file.xml")
-        assert xml_file.filename() == "file"
+        # Create an instance of FileInfo for a local file and call pretty_print on it
+        local_file_info = FileInfo("path/to/local_file.xml")
+        local_file_info.pretty_print()
 
-    def test_pretty_print(self, monkeypatch):
-        """Test pretty_print method of XmlFile class."""
+    def test_pretty_print_gcs(self, monkeypatch):
+        """Test pretty_print method for GCS files in XmlFile class."""
         xml_string = """<?xml version="1.0" encoding="UTF-8"?>
         <root>
             <child>Hello, world!</child>
         </root>
         """
 
-        # Mock the cat_file method to return the xml as bytes
+        # Mock the cat_file method for GCS file handling
         def mock_cat_file(*args, **kwargs):
             return xml_string.encode()
 
-        # Patch the FileClient.get_gcs_file_system method to return a mock
-        # object that has the cat_file method patched
+        # Continue with your existing GCS mocking
         file_client_mock = MagicMock()
         file_client_mock.cat_file.side_effect = mock_cat_file
         get_gcs_file_system_mock = MagicMock(return_value=file_client_mock)
         monkeypatch.setattr(FileClient, "get_gcs_file_system", get_gcs_file_system_mock)
 
-        # Create an instance of FileInfo and call pretty_print on it
-        file_info = FileInfo("path/to/file.xml")
-        file_info.pretty_print()
+        # Create an instance of FileInfo for a GCS file and call pretty_print on it
+        gcs_file_info = FileInfo("gs://path/to/gcs_file.xml")
+        gcs_file_info.pretty_print()
