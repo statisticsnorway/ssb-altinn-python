@@ -100,6 +100,7 @@ The XML needs to contain certain fields in the 'InternInfo'-block, The required 
 - 'enhetsIdent'
 - 'enhetsType'
 - 'delregNr'
+
 If one or more of these fields are missing in the XML, the processing will stop, giving a message with witch fields that are missing.
 
 
