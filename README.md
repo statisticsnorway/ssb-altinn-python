@@ -79,7 +79,7 @@ file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 isee_transform(file)
 ```
 
-If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names as keys, and the new names as values. And then pass the dictionary as an argument when you run the function isee_transform(file, mapping)
+If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names from the xml as keys, and the new names as values. And then pass the dictionary as an argument when running the function isee_transform(file, mapping). 
 
 ```python
 from altinn import isee_transform
@@ -94,7 +94,7 @@ mapping = {
 
 isee_transform(file, mapping)
 ```
-The functions handles flat structures and 'tables' in the XML, and puts a suffix containig a number at the end of the FELTNAVN-column on table-fields. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of witch values in FELTNAVN thar needs to be further processed before it can be used in ISEE.
+The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE. In this case no suffix will be added.
 
 The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
 - 'enhetsIdent'
@@ -108,7 +108,7 @@ The resulting object is a Pandas Dataframe with the following columns:
 
 - `SKJEMA_ID`
 - `DELREG_NR`
-- `IDENT_NRr`
+- `IDENT_NR`
 - `ENHETS_TYPE`
 - `FELTNAVN`
 - `FELTVERDI`
