@@ -7,21 +7,19 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
-from .parser import ParseSingleXml
 
 import pandas as pd
 import xmltodict
 from dapla import FileClient
-import dapla as dp
-from pprint import pprint
 from altinn import utils
 
 
 def isee_transform(file_path, mapping=None):
-    """Transforms a XML to ISEE-format using xmltodict
+    """Transforms a XML to ISEE-format using xmltodict.
         
     Transforms the XML to ISEE-format by using xmltodict to transform the XML 
-    to a dictionary. Traverses/scans the key/values in dictionary for lists, dicts and simple values.
+    to a dictionary. Traverses/scans the key/values in dictionary for lists, 
+    dicts and simple values.
     Stores the results in a list of dictionaries, that converts to a DataFrame
         
     Args:
@@ -35,27 +33,30 @@ def isee_transform(file_path, mapping=None):
         ISEE dynarev format.
     """
     
-    
-    def validate_internInfo(file_path):
-        """
-        Validates the presence of required keys ('enhetsIdent', 'enhetsType', 'delregNr') 
-        within the 'InternInfo' dictionary of an XML file converted to a dictionary.
+    def validate_interninfo(file_path):
+        """Validate interninfo.
+        
+        Validates the presence of required keys 
+        ('enhetsIdent', 'enhetsType', 'delregNr') 
+        within the 'interninfo' dictionary of an XML file converted
+        to a dictionary.
 
         Args:
         - file_path (str): The file path to the XML file.
 
         Returns:
-        - bool: True if all required keys exist in the 'InternInfo' dictionary, False otherwise.
+        - bool: True if all required keys exist in the 'interninfo' 
+        dictionary, False otherwise.
         """
         xml_dict = read_single_xml_to_dict(file_path)
         root_element = list(xml_dict.keys())[0]
 
         required_keys = ['enhetsIdent', 'enhetsType', 'delregNr']
 
-        missing_keys = [key for key in required_keys if key not in xml_dict[root_element]['InternInfo']]
+        missing_keys = [key for key in required_keys if key not in xml_dict[root_element]['interninfo']]
 
         if missing_keys:
-            print(f"The following required keys are missing in ['InternInfo']:")
+            print("The following required keys are missing in ['interninfo']:")
             for key in missing_keys:
                   print(key) 
             print("No output will be produced")
@@ -65,7 +66,7 @@ def isee_transform(file_path, mapping=None):
             return True
     
     def read_single_xml_to_dict(file_path):
-        """Reads XML-file from GCS and transforms it to a dictionary
+        """Reads XML-file from GCS and transforms it to a dictionary.
 
         Args:
             file_path (str): The path to the XML file
@@ -81,7 +82,7 @@ def isee_transform(file_path, mapping=None):
         return data_dict
     
     def extract_angiver_id(file_path):
-        """Collects angiver_id from the filepath
+        """Collects angiver_id from the filepath.
 
         Args:
             file_path (str): The path to the XML file
@@ -89,7 +90,6 @@ def isee_transform(file_path, mapping=None):
         Returns:
             String with extracted_text (angiver_id)
         """
-
         start_index = file_path.find("/form_") + len("/form_")
         end_index = file_path.find(".xml", start_index)
         if start_index != -1 and end_index != -1:
@@ -101,9 +101,12 @@ def isee_transform(file_path, mapping=None):
     def make_isee_dict(
         dict_key, dict_value, counter, subcounter, key_level1, key_level2, key_level3, level
     ):
-        """Makes a dictionary that contains key/values to build a Dataframe in ISEE-format
+        """Makes a dictionary.
+        
+        that contains key/values to build a Dataframe in ISEE-format.
 
-        Takes several args and builds a dict that contains key/vaules similar to columns in a ISSE-dataframe.
+        Takes several args and builds a dict that contains key/vaules similar to columns 
+        in a ISSE-dataframe.
         Appends to a list of dicts
 
         Args:
@@ -124,7 +127,7 @@ def isee_transform(file_path, mapping=None):
             "FELTVERDI": dict_value,
             "RAD_NR": counter,
             "REP_NR": subcounter,
-            "CHILD_OF": f"SkjemaData"
+            "CHILD_OF": "SkjemaData"
             if level == 0
             else f"SkjemaData_{key_level1}"
             if level == 1
@@ -136,7 +139,7 @@ def isee_transform(file_path, mapping=None):
         return data_dict
     
     def make_angiver_row_df(file_path):
-        """Makes a Dataframe with a single row containg info on ANGIVERID
+        """Makes a Dataframe with a single row containg info on ANGIVERID.
 
         A DataFrame that will be concatinated on the end of the ISSE-DataFrame
 
@@ -154,17 +157,18 @@ def isee_transform(file_path, mapping=None):
             "FELTVERDI": extract_angiver_id(file_path),
             "RAD_NR": 0,
             "REP_NR": 0,
-            "IDENT_NR": xml_dict[root_element]["InternInfo"]["enhetsIdent"],
+            "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
             "VERSION_NR": extract_angiver_id(file_path),
-            "DELREGNR": xml_dict[root_element]["InternInfo"]["delregNr"],
-            "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
-            "SKJEMA_ID": xml_dict[root_element]['InternInfo']['raNummer']
+            "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
+            "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
+            "SKJEMA_ID": xml_dict[root_element]['interninfo']['raNummer']
         }
 
         return pd.DataFrame([angiver_id_row])
 
     def add_lopenr(df):
-        """
+        """Add lopenr.
+        
         Adds a suffix to the 'FELTNAVN' column based on conditions related to 'RAD_NR' and 'REP_NR'.
         Checks if input df contains complex structures (tabell i tabell), lists values of FELTNAVN that is not processed.
         Removes columns RAD_NR and REP_NR
@@ -177,7 +181,6 @@ def isee_transform(file_path, mapping=None):
             1. If 'RAD_NR' is 0 and 'REP_NR' is greater than 0, appends '_REP_NR' to 'FELTNAVN'.
             2. If 'RAD_NR' is greater than 0 and 'REP_NR' is 0, appends '_RAD_NR' to 'FELTNAVN'.
         """
-
         df.loc[(df['RAD_NR'] == 0) & (df['REP_NR'] > 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['REP_NR'].astype(str)
         df.loc[(df['RAD_NR'] > 0) & (df['REP_NR'] == 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['RAD_NR'].astype(str)
 
@@ -203,7 +206,7 @@ def isee_transform(file_path, mapping=None):
         
         if utils.is_valid_xml(file_path):
 
-            if validate_internInfo(file_path):
+            if validate_interninfo(file_path):
 
                 if mapping is None:
                     mapping = {}
@@ -240,7 +243,7 @@ def isee_transform(file_path, mapping=None):
                                                     final_list.append(make_isee_dict(subsubkey, subsubvalue, counter, subcounter, key, subkey, None, 2))
 
                                                 if isinstance(subsubvalue, (dict)):
-                                                    for subsubsubkey, subsubvalue in subsubvalue.items():
+                                                    for _, subsubvalue in subsubvalue.items():
 
                                                         final_list.append(make_isee_dict(subsubkey, subsubvalue, counter, subcounter, key, subkey, None, 2))
 
@@ -306,11 +309,11 @@ def isee_transform(file_path, mapping=None):
 
                         
                 final_df = pd.DataFrame(final_list)
-                final_df['IDENT_NR'] = xml_dict[root_element]['InternInfo']['enhetsIdent']
+                final_df['IDENT_NR'] = xml_dict[root_element]['interninfo']['enhetsIdent']
                 final_df['VERSION_NR'] = extract_angiver_id(file_path)
-                final_df['DELREGNR'] = xml_dict[root_element]['InternInfo']['delregNr']
-                final_df['ENHETS_TYPE'] = xml_dict[root_element]['InternInfo']['enhetsType']
-                final_df['SKJEMA_ID'] = xml_dict[root_element]['InternInfo']['raNummer']
+                final_df['DELREGNR'] = xml_dict[root_element]['interninfo']['delregNr']
+                final_df['ENHETS_TYPE'] = xml_dict[root_element]['interninfo']['enhetsType']
+                final_df['SKJEMA_ID'] = xml_dict[root_element]['interninfo']['raNummer']
 
                 final_df = final_df[final_df['FELTNAVN'] != '@xsi:nil']
 
