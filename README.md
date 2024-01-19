@@ -79,7 +79,7 @@ file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 isee_transform(file)
 ```
 
-If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names from the xml as keys, and the new names as values. And then pass the dictionary as an argument when running the function isee_transform(file, mapping). 
+If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names from the xml as keys, and the new names as values. And then pass the dictionary as an argument when running the function isee_transform(file, mapping).
 
 ```python
 from altinn import isee_transform
@@ -89,7 +89,7 @@ file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 mapping = {
     "original_name1": "ISEE_name1",
     "original_name2": "ISEE_name2",
-    "original_name2": "ISEE_name3",    
+    "original_name2": "ISEE_name3",
 }
 
 isee_transform(file, mapping)
