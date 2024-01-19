@@ -14,6 +14,180 @@ from dapla import FileClient
 from altinn import utils
 
 
+def validate_interninfo(file_path):
+    """Validate interninfo.
+
+    Validates the presence of required keys 
+    ('enhetsIdent', 'enhetsType', 'delregNr') 
+    within the 'interninfo' dictionary of an XML file converted
+    to a dictionary.
+
+    Args:
+    - file_path (str): The file path to the XML file.
+
+    Returns:
+    - bool: True if all required keys exist in the 'interninfo' 
+    dictionary, False otherwise.
+    """
+    xml_dict = read_single_xml_to_dict(file_path)
+    root_element = list(xml_dict.keys())[0]
+
+    required_keys = ['enhetsIdent', 'enhetsType', 'delregNr']
+
+    missing_keys = [key for key in required_keys if key not in xml_dict[root_element]['interninfo']]
+
+    if missing_keys:
+        print("The following required keys are missing in ['interninfo']:")
+        for key in missing_keys:
+              print(key) 
+        print("No output will be produced")
+
+        return False
+    else:
+        return True
+    
+
+def read_single_xml_to_dict(file_path):
+    """Reads XML-file from GCS and transforms it to a dictionary.
+
+    Args:
+        file_path (str): The path to the XML file
+
+    Returns:
+        A dictionary with data from a XML
+    """
+    fs = FileClient.get_gcs_file_system()
+
+    with fs.open(file_path, mode="r") as xml_file:
+        data_dict = xmltodict.parse(xml_file.read())
+
+    return data_dict
+
+def extract_angiver_id(file_path):
+    """Collects angiver_id from the filepath.
+
+    Args:
+        file_path (str): The path to the XML file
+
+    Returns:
+        String with extracted_text (angiver_id)
+    """
+    start_index = file_path.find("/form_") + len("/form_")
+    end_index = file_path.find(".xml", start_index)
+    if start_index != -1 and end_index != -1:
+        extracted_text = file_path[start_index:end_index]
+        return extracted_text
+    else:
+        return None
+
+    
+def make_isee_dict(
+    dict_key, dict_value, counter, subcounter, key_level1, key_level2, key_level3, level
+):
+    """Makes a dictionary.
+
+    that contains key/values to build a Dataframe in ISEE-format.
+
+    Takes several args and builds a dict that contains key/vaules similar to columns 
+    in a ISSE-dataframe.
+    Appends to a list of dicts
+
+    Args:
+        dict_key (str): refers to 'FELTNAVN' in ISEE
+        dict_value (str): refers to 'FELTVERDI' in ISEE
+        counter (int): keeps track of levels in ISEE
+        subcounter (int): keeps track of sublevels in ISEE
+        key_level1 (int): is used to keep track of the origin/level of the value
+        key_level2 (int): is used to keep track of the origin/level of the value
+        key_level3 (int): is used to keep track of the origin/level of the value
+        level (int): controls the number of levels to be added to 'CHILD_OF'
+
+    Returns:
+        dict: Dictionary containing ISSE-columns
+    """
+    data_dict = {
+        "FELTNAVN": dict_key,
+        "FELTVERDI": dict_value,
+        "RAD_NR": counter,
+        "REP_NR": subcounter,
+        "CHILD_OF": "SkjemaData"
+        if level == 0
+        else f"SkjemaData_{key_level1}"
+        if level == 1
+        else f"SkjemaData_{key_level1}_{key_level2}"
+        if level == 2
+        else f"SkjemaData_{key_level1}_{key_level2}_{key_level3}",
+    }
+
+    return data_dict
+
+
+def make_angiver_row_df(file_path):
+    """Makes a Dataframe with a single row containg info on ANGIVERID.
+
+    A DataFrame that will be concatinated on the end of the ISSE-DataFrame
+
+    Args:
+        file_path (str): The path to the XML file
+
+    Returns:
+        A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
+
+    """
+    xml_dict = read_single_xml_to_dict(file_path)
+    root_element = list(xml_dict.keys())[0]
+    angiver_id_row = {
+        "FELTNAVN": "ANGIVER_ID",
+        "FELTVERDI": extract_angiver_id(file_path),
+        "RAD_NR": 0,
+        "REP_NR": 0,
+        "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
+        "VERSION_NR": extract_angiver_id(file_path),
+        "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
+        "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
+        "SKJEMA_ID": xml_dict[root_element]['interninfo']['raNummer']
+    }
+
+    return pd.DataFrame([angiver_id_row])
+
+
+def add_lopenr(df):
+    """Add lopenr.
+
+    Adds a suffix to the 'FELTNAVN' column based on conditions related to 'RAD_NR' and 'REP_NR'.
+    Checks if input df contains complex structures (tabell i tabell), lists values of FELTNAVN that is not processed.
+    Removes columns RAD_NR and REP_NR
+
+    Args:
+    - df (pandas.DataFrame): The input DataFrame must contain columns 'FELTNAVN', 'RAD_NR', and 'REP_NR'.
+
+    Returns:
+    - pandas.DataFrame: The DataFrame with modifications to the 'FELTNAVN' column based on conditions:
+        1. If 'RAD_NR' is 0 and 'REP_NR' is greater than 0, appends '_REP_NR' to 'FELTNAVN'.
+        2. If 'RAD_NR' is greater than 0 and 'REP_NR' is 0, appends '_RAD_NR' to 'FELTNAVN'.
+    """
+    df.loc[(df['RAD_NR'] == 0) & (df['REP_NR'] > 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['REP_NR'].astype(str)
+    df.loc[(df['RAD_NR'] > 0) & (df['REP_NR'] == 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['RAD_NR'].astype(str)
+
+
+    rad_nr_gt_0 = (df['RAD_NR'] > 0).any()
+    rep_nr_gt_0 = (df['REP_NR'] > 0).any()
+
+    if rad_nr_gt_0 and rep_nr_gt_0:
+
+        duplicate_feltnavn = set(df[df.duplicated('FELTNAVN')]['FELTNAVN'])
+
+        if duplicate_feltnavn:
+            print('\033[91m' + "XML-inneholder kompliserte strukturer (Tabell i tabell), det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE.")
+            print("Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer:" + '\033[0m')
+            for var in duplicate_feltnavn:
+                print(var)
+
+    df.drop(columns=['RAD_NR', 'REP_NR'], inplace=True)  # Drop RAD_NR and REP_NR columns
+
+    return df
+
+
 def isee_transform(file_path, mapping=None):
     """Transforms a XML to ISEE-format using xmltodict.
         
@@ -33,174 +207,6 @@ def isee_transform(file_path, mapping=None):
         ISEE dynarev format.
     """
     
-    def validate_interninfo(file_path):
-        """Validate interninfo.
-        
-        Validates the presence of required keys 
-        ('enhetsIdent', 'enhetsType', 'delregNr') 
-        within the 'interninfo' dictionary of an XML file converted
-        to a dictionary.
-
-        Args:
-        - file_path (str): The file path to the XML file.
-
-        Returns:
-        - bool: True if all required keys exist in the 'interninfo' 
-        dictionary, False otherwise.
-        """
-        xml_dict = read_single_xml_to_dict(file_path)
-        root_element = list(xml_dict.keys())[0]
-
-        required_keys = ['enhetsIdent', 'enhetsType', 'delregNr']
-
-        missing_keys = [key for key in required_keys if key not in xml_dict[root_element]['interninfo']]
-
-        if missing_keys:
-            print("The following required keys are missing in ['interninfo']:")
-            for key in missing_keys:
-                  print(key) 
-            print("No output will be produced")
-
-            return False
-        else:
-            return True
-    
-    def read_single_xml_to_dict(file_path):
-        """Reads XML-file from GCS and transforms it to a dictionary.
-
-        Args:
-            file_path (str): The path to the XML file
-
-        Returns:
-            A dictionary with data from a XML
-        """
-        fs = FileClient.get_gcs_file_system()
-
-        with fs.open(file_path, mode="r") as xml_file:
-            data_dict = xmltodict.parse(xml_file.read())
-
-        return data_dict
-    
-    def extract_angiver_id(file_path):
-        """Collects angiver_id from the filepath.
-
-        Args:
-            file_path (str): The path to the XML file
-
-        Returns:
-            String with extracted_text (angiver_id)
-        """
-        start_index = file_path.find("/form_") + len("/form_")
-        end_index = file_path.find(".xml", start_index)
-        if start_index != -1 and end_index != -1:
-            extracted_text = file_path[start_index:end_index]
-            return extracted_text
-        else:
-            return None
-
-    def make_isee_dict(
-        dict_key, dict_value, counter, subcounter, key_level1, key_level2, key_level3, level
-    ):
-        """Makes a dictionary.
-        
-        that contains key/values to build a Dataframe in ISEE-format.
-
-        Takes several args and builds a dict that contains key/vaules similar to columns 
-        in a ISSE-dataframe.
-        Appends to a list of dicts
-
-        Args:
-            dict_key (str): refers to 'FELTNAVN' in ISEE
-            dict_value (str): refers to 'FELTVERDI' in ISEE
-            counter (int): keeps track of levels in ISEE
-            subcounter (int): keeps track of sublevels in ISEE
-            key_level1 (int): is used to keep track of the origin/level of the value
-            key_level2 (int): is used to keep track of the origin/level of the value
-            key_level3 (int): is used to keep track of the origin/level of the value
-            level (int): controls the number of levels to be added to 'CHILD_OF'
-
-        Returns:
-            dict: Dictionary containing ISSE-columns
-        """
-        data_dict = {
-            "FELTNAVN": dict_key,
-            "FELTVERDI": dict_value,
-            "RAD_NR": counter,
-            "REP_NR": subcounter,
-            "CHILD_OF": "SkjemaData"
-            if level == 0
-            else f"SkjemaData_{key_level1}"
-            if level == 1
-            else f"SkjemaData_{key_level1}_{key_level2}"
-            if level == 2
-            else f"SkjemaData_{key_level1}_{key_level2}_{key_level3}",
-        }
-
-        return data_dict
-    
-    def make_angiver_row_df(file_path):
-        """Makes a Dataframe with a single row containg info on ANGIVERID.
-
-        A DataFrame that will be concatinated on the end of the ISSE-DataFrame
-
-        Args:
-            file_path (str): The path to the XML file
-
-        Returns:
-            A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
-
-        """
-        xml_dict = read_single_xml_to_dict(file_path)
-        root_element = list(xml_dict.keys())[0]
-        angiver_id_row = {
-            "FELTNAVN": "ANGIVER_ID",
-            "FELTVERDI": extract_angiver_id(file_path),
-            "RAD_NR": 0,
-            "REP_NR": 0,
-            "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
-            "VERSION_NR": extract_angiver_id(file_path),
-            "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
-            "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
-            "SKJEMA_ID": xml_dict[root_element]['interninfo']['raNummer']
-        }
-
-        return pd.DataFrame([angiver_id_row])
-
-    def add_lopenr(df):
-        """Add lopenr.
-        
-        Adds a suffix to the 'FELTNAVN' column based on conditions related to 'RAD_NR' and 'REP_NR'.
-        Checks if input df contains complex structures (tabell i tabell), lists values of FELTNAVN that is not processed.
-        Removes columns RAD_NR and REP_NR
-
-        Args:
-        - df (pandas.DataFrame): The input DataFrame must contain columns 'FELTNAVN', 'RAD_NR', and 'REP_NR'.
-
-        Returns:
-        - pandas.DataFrame: The DataFrame with modifications to the 'FELTNAVN' column based on conditions:
-            1. If 'RAD_NR' is 0 and 'REP_NR' is greater than 0, appends '_REP_NR' to 'FELTNAVN'.
-            2. If 'RAD_NR' is greater than 0 and 'REP_NR' is 0, appends '_RAD_NR' to 'FELTNAVN'.
-        """
-        df.loc[(df['RAD_NR'] == 0) & (df['REP_NR'] > 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['REP_NR'].astype(str)
-        df.loc[(df['RAD_NR'] > 0) & (df['REP_NR'] == 0), 'FELTNAVN'] = df['FELTNAVN'] + '_' + df['RAD_NR'].astype(str)
-
-
-        rad_nr_gt_0 = (df['RAD_NR'] > 0).any()
-        rep_nr_gt_0 = (df['REP_NR'] > 0).any()
-
-        if rad_nr_gt_0 and rep_nr_gt_0:
-
-            duplicate_feltnavn = set(df[df.duplicated('FELTNAVN')]['FELTNAVN'])
-
-            if duplicate_feltnavn:
-                print('\033[91m' + "XML-inneholder kompliserte strukturer (Tabell i tabell), det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE.")
-                print("Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer:" + '\033[0m')
-                for var in duplicate_feltnavn:
-                    print(var)
-
-        df.drop(columns=['RAD_NR', 'REP_NR'], inplace=True)  # Drop RAD_NR and REP_NR columns
-
-        return df
    
     if utils.is_gcs(file_path):
         
