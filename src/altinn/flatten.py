@@ -243,9 +243,9 @@ def isee_transform(file_path, mapping=None):
                                                     final_list.append(make_isee_dict(subsubkey, subsubvalue, counter, subcounter, key, subkey, None, 2))
 
                                                 if isinstance(subsubvalue, (dict)):
-                                                    for _, subsubvalue in subsubvalue.items():
+                                                    for _, dictsubsubvalue in subsubvalue.items():
 
-                                                        final_list.append(make_isee_dict(subsubkey, subsubvalue, counter, subcounter, key, subkey, None, 2))
+                                                        final_list.append(make_isee_dict(subsubkey, dictsubsubvalue, counter, subcounter, key, subkey, None, 2))
 
                                             subcounter += 1
 
