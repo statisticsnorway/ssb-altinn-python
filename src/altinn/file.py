@@ -31,7 +31,7 @@ class FileInfo:
         # Expand the path to support '~' for home directory
         self.expanded_file_path = os.path.expanduser(file_path)
 
-    def _read_file(self):
+    def _read_file(self) -> bytes:
         """Read file content based on the file source.
 
         Returns:

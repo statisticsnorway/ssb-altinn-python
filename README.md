@@ -67,7 +67,7 @@ df=form_content.to_dataframe()
 df.head()
 ```
 
-### Tramsform to ISEE-Dynarev format
+### Transform to ISEE-Dynarev format
 
 If you want to transform an Altinn3 xml-file to a Pandas Dataframe, in the same form as the ISEE Dynarev database in our on-prem environment, you can use the `isee_transform`-function.
 
@@ -79,15 +79,40 @@ file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
 isee_transform(file)
 ```
 
+If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names from the xml as keys, and the new names as values. And then pass the dictionary as an argument when running the function isee_transform(file, mapping).
+
+```python
+from altinn import isee_transform
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+
+mapping = {
+    "original_name1": "ISEE_name1",
+    "original_name2": "ISEE_name2",
+    "original_name2": "ISEE_name3",
+}
+
+isee_transform(file, mapping)
+```
+The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE. In this case no suffix will be added.
+
+The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
+- 'enhetsIdent'
+- 'enhetsType'
+- 'delregNr'
+
+If one or more of these fields are missing in the XML, the processing will stop, giving a message with witch fields that are missing.
+
+
 The resulting object is a Pandas Dataframe with the following columns:
 
-- `Skjema_id`
-- `Delreg_nr`
-- `Ident_nr`
-- `Enhets_type`
-- `feltnavn`
-- `feltverdi`
-- `version_nr`
+- `SKJEMA_ID`
+- `DELREG_NR`
+- `IDENT_NR`
+- `ENHETS_TYPE`
+- `FELTNAVN`
+- `FELTVERDI`
+- `VERSION_NR`
 
 This dataframe can be written to csv and uploaded to the ISEE Dynarev database.
 
@@ -96,6 +121,7 @@ This dataframe can be written to csv and uploaded to the ISEE Dynarev database.
 - dapla-toolbelt >=1.6.2,<2.0.0
 - defusedxml >=0.7.1,<0.8.0
 - pytest >=7.2.2,<8.0.0
+- xmltodict = "^0.13.0"
 
 ## Installation
 

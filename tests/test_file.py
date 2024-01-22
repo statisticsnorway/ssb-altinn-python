@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock
 from unittest.mock import mock_open
 
+from _pytest.monkeypatch import MonkeyPatch
 from dapla import FileClient
 
 from altinn.file import FileInfo
@@ -13,7 +14,7 @@ class TestFileInfo:
 
     # other test methods...
 
-    def test_pretty_print_local(self, monkeypatch):
+    def test_pretty_print_local(self, monkeypatch: MonkeyPatch):
         """Test pretty_print method for local files in XmlFile class."""
         xml_string = """<?xml version="1.0" encoding="UTF-8"?>
         <root>
@@ -31,7 +32,7 @@ class TestFileInfo:
         local_file_info = FileInfo("path/to/local_file.xml")
         local_file_info.pretty_print()
 
-    def test_pretty_print_gcs(self, monkeypatch):
+    def test_pretty_print_gcs(self, monkeypatch: MonkeyPatch):
         """Test pretty_print method for GCS files in XmlFile class."""
         xml_string = """<?xml version="1.0" encoding="UTF-8"?>
         <root>
@@ -40,7 +41,7 @@ class TestFileInfo:
         """
 
         # Mock the cat_file method for GCS file handling
-        def mock_cat_file(*args, **kwargs):
+        def mock_cat_file(*args, **kwargs) -> bytes:
             return xml_string.encode()
 
         # Continue with your existing GCS mocking

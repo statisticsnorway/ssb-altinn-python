@@ -1,8 +1,8 @@
 """This module contains the main function for running the Altinn application."""
 import os
 from typing import Any
-from typing import Dict
 from typing import Optional
+from xml.etree.ElementTree import Element  # noqa: S405
 
 import pandas as pd
 from dapla import FileClient
@@ -35,8 +35,11 @@ class ParseSingleXml:
             print("""File is not a valid XML-file.""")
 
     def traverse_xml(
-        self, element, column_counter=1, data: Optional[Dict[str, Any]] = None
-    ):
+        self,
+        element: Element,
+        column_counter: int = 1,
+        data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """Recursively traverse an XML element and extract data.
 
         Args:
@@ -50,7 +53,9 @@ class ParseSingleXml:
         if data is None:
             data = {}
 
-        def recursive_traverse(element, column_counter, data, prefix):
+        def recursive_traverse(
+            element: Element, column_counter: int, data: dict[str, Any], prefix: str
+        ) -> None:
             for sub_element in element:
                 tag_name = sub_element.tag
                 full_tag_name = prefix + "_" + tag_name if prefix else tag_name
@@ -80,27 +85,25 @@ class ParseSingleXml:
             recursive_traverse(child, column_counter, data, child.tag)
         return data
 
-    def get_root_from_dapla(self):
+    def get_root_from_dapla(self) -> Element:
         """Read in XML-file from GCP-buckets on Dapla.
 
         Returns:
-            ElementTree: A ElementTree-object representation of the XML file.
+            Element: The root Element of the parsed XML file.
         """
         fs = FileClient.get_gcs_file_system()
         with fs.open(self.file_path, mode="r") as f:
             single_xml = f.read()
-        root = ElementTree.fromstring(single_xml)
-        return root
+        return ElementTree.fromstring(single_xml)
 
-    def get_root_from_filesystem(self):
+    def get_root_from_filesystem(self) -> Element:
         """Read in XML-file from classical filesystem.
 
         Returns:
-            ElementTree: A ElementTree-object representation of the XML file.
+            Element: The root Element of the parsed XML file.
         """
         tree = ElementTree.parse(self.file_path)
-        root = tree.getroot()
-        return root
+        return tree.getroot()
 
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.
@@ -112,7 +115,7 @@ class ParseSingleXml:
             root = self.get_root_from_dapla()
         else:
             root = self.get_root_from_filesystem()
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         self.traverse_xml(root, 1, data)
         df = pd.DataFrame([data])
         return df
