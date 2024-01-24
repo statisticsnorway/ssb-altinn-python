@@ -5,10 +5,16 @@ on:
     branches:
       - main
       - master
+    paths:
+      - ".github/labels.yml"
+      - ".github/workflows/labeler.yml"
 
 jobs:
   labeler:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4

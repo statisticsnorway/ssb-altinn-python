@@ -3,7 +3,6 @@ import os
 import shlex
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 from textwrap import dedent
 
@@ -22,13 +21,11 @@ except ImportError:
     {sys.executable} -m pip install nox-poetry"""
     raise SystemExit(dedent(message)) from None
 
-
 package = "altinn"
-python_versions = ["3.10"]
+python_versions = ["3.10", "3.11", "3.9"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",
-    "safety",
     "mypy",
     "tests",
     "typeguard",
@@ -47,7 +44,7 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     Args:
         session: The Session object.
     """
-    assert session.bin is not None  # noqa: S101
+    assert session.bin is not None  # nosec
 
     # Only patch hooks containing a reference to this session's bindir. Support
     # quoting rules for Python and bash, but strip the outermost quotes so we
@@ -96,19 +93,28 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
 
         text = hook.read_text()
 
-        if not any(
-            Path("A") == Path("a") and bindir.lower() in text.lower() or bindir in text
-            for bindir in bindirs
-        ):
+        if not is_bindir_in_text(bindirs, text):
             continue
 
         lines = text.splitlines()
+        hook.write_text(insert_header_in_hook(headers, lines))
 
-        for executable, header in headers.items():
-            if executable in lines[0].lower():
-                lines.insert(1, dedent(header))
-                hook.write_text("\n".join(lines))
-                break
+
+def is_bindir_in_text(bindirs: list[str], text: str) -> bool:
+    """Helper function to check if bindir is in text."""
+    return any(
+        Path("A") == Path("a") and bindir.lower() in text.lower() or bindir in text
+        for bindir in bindirs
+    )
+
+
+def insert_header_in_hook(header: dict[str, str], lines: list[str]) -> str:
+    """Helper function to insert headers in hook's text."""
+    for executable, header_text in header.items():
+        if executable in lines[0].lower():
+            lines.insert(1, dedent(header_text))
+            return "\n".join(lines)
+    return "\n".join(lines)
 
 
 @session(name="pre-commit", python=python_versions[0])
@@ -121,47 +127,21 @@ def precommit(session: Session) -> None:
         "--show-diff-on-failure",
     ]
     session.install(
-        "black",
-        "darglint",
-        "flake8",
-        "flake8-bandit",
-        "flake8-bugbear",
-        "flake8-docstrings",
-        "flake8-rst-docstrings",
-        "isort",
-        "pep8-naming",
         "pre-commit",
         "pre-commit-hooks",
-        "pyupgrade",
+        "darglint",
+        "ruff",
+        "black",
     )
     session.run("pre-commit", *args)
     if args and args[0] == "install":
         activate_virtualenv_in_precommit_hooks(session)
 
 
-@session(python=python_versions[0])
-def safety(session: Session) -> None:
-    """Scan dependencies for insecure packages."""
-    with tempfile.NamedTemporaryFile() as requirements:
-        session.run(
-            "poetry",
-            "export",
-            "--format=requirements.txt",
-            "--output",
-            requirements.name,
-            "--without-hashes",
-            "--with",
-            "dev",
-            external=True,
-        )
-        session.install("safety")  # Update this line
-        session.run("safety", "check", "--full-report", f"--file={requirements.name}")
-
-
 @session(python=python_versions)
 def mypy(session: Session) -> None:
     """Type-check using mypy."""
-    args = session.posargs or ["src", "tests", "docs/conf.py"]
+    args = session.posargs or ["src", "tests"]
     session.install(".")
     session.install("mypy", "pytest")
     session.run("mypy", *args)
@@ -175,7 +155,16 @@ def tests(session: Session) -> None:
     session.install(".")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
-        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
+        session.run(
+            "coverage",
+            "run",
+            "--parallel",
+            "-m",
+            "pytest",
+            "-o",
+            "pythonpath=",
+            *session.posargs,
+        )
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])
@@ -184,7 +173,7 @@ def tests(session: Session) -> None:
 @session(python=python_versions[0])
 def coverage(session: Session) -> None:
     """Produce the coverage report."""
-    args = session.posargs or ["report"]
+    args = session.posargs or ["report", "--skip-empty"]
 
     session.install("coverage[toml]")
 
@@ -225,7 +214,9 @@ def docs_build(session: Session) -> None:
         args.insert(0, "--color")
 
     session.install(".")
-    session.install("sphinx", "sphinx-click", "furo", "myst-parser")
+    session.install(
+        "sphinx", "sphinx-autodoc-typehints", "sphinx-click", "furo", "myst-parser"
+    )
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():
@@ -239,7 +230,14 @@ def docs(session: Session) -> None:
     """Build and serve the documentation with live reloading on file changes."""
     args = session.posargs or ["--open-browser", "docs", "docs/_build"]
     session.install(".")
-    session.install("sphinx", "sphinx-autobuild", "sphinx-click", "furo", "myst-parser")
+    session.install(
+        "sphinx",
+        "sphinx-autobuild",
+        "sphinx-autodoc-typehints",
+        "sphinx-click",
+        "furo",
+        "myst-parser",
+    )
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():

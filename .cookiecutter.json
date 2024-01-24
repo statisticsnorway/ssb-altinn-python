@@ -1,14 +1,22 @@
 {
-  "_output_dir": "/home/obr/repositories",
-  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
-  "author": "\u00d8yvind Bruer-Skarsb\u00f8",
-  "copyright_year": "2023",
-  "development_status": "Development Status :: 3 - Alpha",
-  "email": "obr@ssb.no",
+  "_copy_without_render": [
+    "*.rst_t"
+  ],
+  "_jinja2_env_vars": {
+    "lstrip_blocks": true,
+    "trim_blocks": true
+  },
+  "_template": "https://github.com/statisticsnorway/ssb-pypitemplate.git",
+  "author": "Vidar Strandseter",
+  "code_quality_level": "Medium",
+  "copyright_owner": "Statistics Norway",
+  "copyright_year": "2024",
+  "development_status": "Development Status :: 4 - Beta",
+  "email": "vidar.strandseter@ssb.no",
   "friendly_name": "SSB Altinn Python",
-  "github_user": "skars82",
+  "github_organization": "statisticsnorway",
   "license": "MIT",
   "package_name": "altinn",
   "project_name": "ssb-altinn-python",
-  "version": "0.0.0"
+  "version": "0.3.5"
 }

@@ -4,13 +4,16 @@ end-before: <!-- github-only -->
 ---
 ```
 
+[license]: license
+[contributor guide]: contributing
+[command-line reference]: reference
+
 ```{toctree}
 ---
 hidden:
 maxdepth: 1
 ---
 
-usage
 reference
 contributing
 Code of Conduct <codeofconduct>

@@ -1,0 +1,30 @@
+{
+  "template": "https://github.com/statisticsnorway/ssb-pypitemplate.git",
+  "commit": "8a5c60c72f9395ee9f52edd62d5879212d1da14f",
+  "checkout": "2024.1.18",
+  "context": {
+    "cookiecutter": {
+      "project_name": "ssb-altinn-python",
+      "package_name": "altinn",
+      "friendly_name": "SSB Altinn Python",
+      "copyright_owner": "Statistics Norway",
+      "copyright_year": "2024",
+      "author": "Vidar Strandseter",
+      "email": "vidar.strandseter@ssb.no",
+      "github_organization": "statisticsnorway",
+      "version": "0.3.5",
+      "license": "MIT",
+      "development_status": "Development Status :: 4 - Beta",
+      "code_quality_level": "Medium",
+      "_copy_without_render": [
+        "*.rst_t"
+      ],
+      "_jinja2_env_vars": {
+        "lstrip_blocks": true,
+        "trim_blocks": true
+      },
+      "_template": "https://github.com/statisticsnorway/ssb-pypitemplate.git"
+    }
+  },
+  "directory": null
+}
