@@ -1,25 +1,29 @@
 # SSB Altinn Python
 
-[![PyPI](https://img.shields.io/pypi/v/ssb-altinn-python.svg)][pypi_]
-[![Status](https://img.shields.io/pypi/status/ssb-altinn-python.svg)][status]
-[![Python Version](https://img.shields.io/pypi/pyversions/ssb-altinn-python)][python version]
+[![PyPI](https://img.shields.io/pypi/v/ssb-altinn-python.svg)][pypi status]
+[![Status](https://img.shields.io/pypi/status/ssb-altinn-python.svg)][pypi status]
+[![Python Version](https://img.shields.io/pypi/pyversions/ssb-altinn-python)][pypi status]
 [![License](https://img.shields.io/pypi/l/ssb-altinn-python)][license]
 
-[![Read the documentation at https://ssb-altinn-python.readthedocs.io/](https://img.shields.io/readthedocs/ssb-altinn-python/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/statisticsnorway/ssb-altinn-python/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/statisticsnorway/ssb-altinn-python/branch/main/graph/badge.svg)][codecov]
+[![Documentation](https://github.com/statisticsnorway/ssb-altinn-python/actions/workflows/docs.yml/badge.svg)][documentation]
+[![Tests](https://github.com/statisticsnorway/ssb-altinn-python/actions/workflows/tests.yml/badge.svg)][tests]
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=statisticsnorway_ssb-altinn-python&metric=coverage)][sonarcov]
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=statisticsnorway_ssb-altinn-python&metric=alert_status)][sonarquality]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)][poetry]
 
-[pypi_]: https://pypi.org/project/ssb-altinn-python/
-[status]: https://pypi.org/project/ssb-altinn-python/
-[python version]: https://pypi.org/project/ssb-altinn-python
-[read the docs]: https://ssb-altinn-python.readthedocs.io/
+[pypi status]: https://pypi.org/project/ssb-altinn-python/
+[documentation]: https://statisticsnorway.github.io/ssb-altinn-python
 [tests]: https://github.com/statisticsnorway/ssb-altinn-python/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/statisticsnorway/ssb-altinn-python
+
+[sonarcov]: https://sonarcloud.io/summary/overall?id=statisticsnorway_ssb-altinn-python
+[sonarquality]: https://sonarcloud.io/summary/overall?id=statisticsnorway_ssb-altinn-python
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
+[poetry]: https://python-poetry.org/
 
 ## Features
 
@@ -118,10 +122,10 @@ This dataframe can be written to csv and uploaded to the ISEE Dynarev database.
 
 ## Requirements
 
-- dapla-toolbelt >=1.6.2,<2.0.0
-- defusedxml >=0.7.1,<0.8.0
-- pytest >=7.2.2,<8.0.0
-- xmltodict = "^0.13.0"
+- dapla-toolbelt >=1.6.2
+- defusedxml >=0.7.1
+- xmltodict >=0.13.0
+- pandas >= 2.2.0
 
 ## Installation
 
@@ -135,7 +139,7 @@ To install this in the Jupyter-environment on Dapla, where it is ment to be used
 
 ## Usage
 
-Please see the [Command-line Reference] for details.
+Please see the [Reference Guide] for details.
 
 ## Contributing
 
@@ -154,16 +158,16 @@ please [file an issue] along with a detailed description.
 
 ## Credits
 
-This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter] template.
+This project was generated from [Statistics Norway]'s [SSB PyPI Template].
 
-[@cjolowicz]: https://github.com/cjolowicz
+[statistics norway]: https://www.ssb.no/en
 [pypi]: https://pypi.org/
-[hypermodern python cookiecutter]: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-[file an issue]: https://github.com/skars82/ssb-altinn-python/issues
+[ssb pypi template]: https://github.com/statisticsnorway/ssb-pypitemplate
+[file an issue]: https://github.com/statisticsnorway/ssb-altinn-python/issues
 [pip]: https://pip.pypa.io/
 
 <!-- github-only -->
 
-[license]: https://github.com/skars82/ssb-altinn-python/blob/main/LICENSE
-[contributor guide]: https://github.com/skars82/ssb-altinn-python/blob/main/CONTRIBUTING.md
-[command-line reference]: https://ssb-altinn-python.readthedocs.io/en/latest/usage.html
+[license]: https://github.com/statisticsnorway/ssb-altinn-python/blob/main/LICENSE
+[contributor guide]: https://github.com/statisticsnorway/ssb-altinn-python/blob/main/CONTRIBUTING.md
+[reference guide]: https://statisticsnorway.github.io/ssb-altinn-python/reference.html

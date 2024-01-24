@@ -1,4 +1,4 @@
-"""For flattening Altinn3 xml.files for Dynarev-base in Oracle.
+"""For flattening Altinn3 xml-files for Dynarev-base in Oracle.
 
 This module contains the functions for flattening the Altinn3 xml-files that
 should be loaded into our on-prem Oracle database for Dynarev-base. These generic
@@ -19,7 +19,7 @@ from dapla import FileClient
 from altinn import utils
 
 
-def validate_interninfo(file_path: str) -> bool:
+def _validate_interninfo(file_path: str) -> bool:
     """Validate interninfo.
 
     Validates the presence of required keys
@@ -35,7 +35,7 @@ def validate_interninfo(file_path: str) -> bool:
         dictionary, False otherwise.
     """
     xml_dict = read_single_xml_to_dict(file_path)
-    root_element = list(xml_dict.keys())[0]
+    root_element = next(iter(xml_dict.keys()))
 
     required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
 
@@ -54,7 +54,7 @@ def validate_interninfo(file_path: str) -> bool:
         return True
 
 
-def read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
+def _read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
     """Reads XML-file from GCS or local file, and transforms it to a dictionary.
 
     Args:
@@ -76,7 +76,7 @@ def read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
     return data_dict
 
 
-def extract_angiver_id(file_path: str) -> str | None:
+def _extract_angiver_id(file_path: str) -> str | None:
     """Collects angiver_id from the filepath.
 
     Args:
@@ -94,7 +94,7 @@ def extract_angiver_id(file_path: str) -> str | None:
         return None
 
 
-def make_isee_dict(
+def _make_isee_dict(
     dict_key: str,
     dict_value: str,
     counter: int,
@@ -142,7 +142,7 @@ def make_isee_dict(
     return data_dict
 
 
-def make_angiver_row_df(file_path: str) -> pd.DataFrame:
+def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
     """Makes a Dataframe with a single row containg info on ANGIVERID.
 
     A DataFrame that will be concatenated on the end of the ISSE-DataFrame
@@ -155,14 +155,14 @@ def make_angiver_row_df(file_path: str) -> pd.DataFrame:
 
     """
     xml_dict = read_single_xml_to_dict(file_path)
-    root_element = list(xml_dict.keys())[0]
+    root_element = next(iter(xml_dict.keys()))
     angiver_id_row = {
         "FELTNAVN": "ANGIVER_ID",
-        "FELTVERDI": extract_angiver_id(file_path),
+        "FELTVERDI": _extract_angiver_id(file_path),
         "RAD_NR": 0,
         "REP_NR": 0,
         "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
-        "VERSION_NR": extract_angiver_id(file_path),
+        "VERSION_NR": _extract_angiver_id(file_path),
         "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
         "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
         "SKJEMA_ID": xml_dict[root_element]["interninfo"]["raNummer"],
@@ -171,7 +171,7 @@ def make_angiver_row_df(file_path: str) -> pd.DataFrame:
     return pd.DataFrame([angiver_id_row])
 
 
-def add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
+def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     """Add lopenr.
 
     Adds a suffix to the 'FELTNAVN' column based on conditions related to
@@ -210,8 +210,7 @@ def add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
                 "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE."
             )
             print(
-                "Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer:"
-                + "\033[0m"
+                "Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer: \033[0m"
             )
             for var in duplicate_feltnavn:
                 print(var)
@@ -252,7 +251,7 @@ def isee_transform(
             if mapping is None:
                 mapping = {}
 
-            xml_dict = read_single_xml_to_dict(file_path)
+            xml_dict = _read_single_xml_to_dict(file_path)
             root_element = list(xml_dict.keys())[0]
             input_dict = xml_dict[root_element]["SkjemaData"]
 
@@ -271,7 +270,7 @@ def isee_transform(
                             for subkey, subvalue in element.items():
                                 if not isinstance(subvalue, (list, dict)):
                                     final_list.append(
-                                        make_isee_dict(
+                                        _make_isee_dict(
                                             subkey,
                                             subvalue,
                                             counter,
@@ -294,7 +293,7 @@ def isee_transform(
                                                 subsubvalue, (list, dict)
                                             ):
                                                 final_list.append(
-                                                    make_isee_dict(
+                                                    _make_isee_dict(
                                                         subsubkey,
                                                         subsubvalue,
                                                         counter,
@@ -312,7 +311,7 @@ def isee_transform(
                                                     dictsubsubvalue,
                                                 ) in subsubvalue.items():
                                                     final_list.append(
-                                                        make_isee_dict(
+                                                        _make_isee_dict(
                                                             subsubkey,
                                                             dictsubsubvalue,
                                                             counter,
@@ -334,7 +333,7 @@ def isee_transform(
                                             subsubvalue, (list, dict)
                                         ):
                                             final_list.append(
-                                                make_isee_dict(
+                                                _make_isee_dict(
                                                     subsubkey,
                                                     subsubvalue,
                                                     counter,
@@ -352,7 +351,7 @@ def isee_transform(
                                                 subsubsubvalue,
                                             ) in subsubvalue.items():
                                                 final_list.append(
-                                                    make_isee_dict(
+                                                    _make_isee_dict(
                                                         subsubsubkey,
                                                         subsubsubvalue,
                                                         counter,
@@ -372,7 +371,7 @@ def isee_transform(
 
                         if not isinstance(sub_dict_value, (dict, list)):
                             final_list.append(
-                                make_isee_dict(
+                                _make_isee_dict(
                                     sub_dict_key,
                                     sub_dict_value,
                                     counter,
@@ -390,7 +389,7 @@ def isee_transform(
                                 for subkey, subvalue in subelement.items():
                                     if not isinstance(subvalue, (dict, list)):
                                         final_list.append(
-                                            make_isee_dict(
+                                            _make_isee_dict(
                                                 subkey,
                                                 subvalue,
                                                 counter,
@@ -408,7 +407,7 @@ def isee_transform(
                                             dict_dict_value,
                                         ) in subvalue.items():
                                             final_list.append(
-                                                make_isee_dict(
+                                                _make_isee_dict(
                                                     dict_dict_key,
                                                     dict_dict_value,
                                                     counter,
@@ -430,7 +429,7 @@ def isee_transform(
                             ) in sub_dict_value.items():
                                 if not isinstance(dict_dict_value, (list, dict)):
                                     final_list.append(
-                                        make_isee_dict(
+                                        _make_isee_dict(
                                             dict_dict_key,
                                             dict_dict_value,
                                             counter,
@@ -448,7 +447,7 @@ def isee_transform(
                                         dict_dict_dict_value,
                                     ) in dict_dict_value.items():
                                         final_list.append(
-                                            make_isee_dict(
+                                            _make_isee_dict(
                                                 dict_dict_dict_key,
                                                 dict_dict_dict_value,
                                                 counter,
@@ -462,14 +461,14 @@ def isee_transform(
 
                 elif not isinstance(value, (dict, list)):
                     final_list.append(
-                        make_isee_dict(key, value, counter, 0, None, None, None, 0)
+                        _make_isee_dict(key, value, counter, 0, None, None, None, 0)
                     )
 
             final_df = pd.DataFrame(final_list)
             final_df["IDENT_NR"] = xml_dict[root_element]["interninfo"][
                 "enhetsIdent"
             ]
-            final_df["VERSION_NR"] = extract_angiver_id(file_path)
+            final_df["VERSION_NR"] = _extract_angiver_id(file_path)
             final_df["DELREGNR"] = xml_dict[root_element]["interninfo"]["delregNr"]
             final_df["ENHETS_TYPE"] = xml_dict[root_element]["interninfo"][
                 "enhetsType"
@@ -482,7 +481,7 @@ def isee_transform(
             final_df = final_df.drop(["CHILD_OF"], axis=1)
 
             final_df = pd.concat(
-                [final_df, make_angiver_row_df(file_path)], ignore_index=True
+                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
             )
 
             final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix(
@@ -492,7 +491,7 @@ def isee_transform(
             if mapping is not None:
                 final_df["FELTNAVN"].replace(mapping, inplace=True)
 
-            final_df = add_lopenr(final_df)
+            final_df = _add_lopenr(final_df)
 
             return final_df
 

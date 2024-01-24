@@ -2,7 +2,7 @@
 import os
 from typing import Any
 from typing import Optional
-from xml.etree.ElementTree import Element  # noqa: S405
+from xml.etree.ElementTree import Element
 
 import pandas as pd
 from dapla import FileClient
@@ -94,7 +94,7 @@ class ParseSingleXml:
         fs = FileClient.get_gcs_file_system()
         with fs.open(self.file_path, mode="r") as f:
             single_xml = f.read()
-        return ElementTree.fromstring(single_xml)
+        return ElementTree.fromstring(single_xml)  # type: ignore[no-any-return]
 
     def get_root_from_filesystem(self) -> Element:
         """Read in XML-file from classical filesystem.
@@ -103,7 +103,7 @@ class ParseSingleXml:
             Element: The root Element of the parsed XML file.
         """
         tree = ElementTree.parse(self.file_path)
-        return tree.getroot()
+        return tree.getroot()  # type: ignore[no-any-return]
 
     def to_dataframe(self) -> pd.DataFrame:
         """Parse single XML file to a pandas DataFrame.
