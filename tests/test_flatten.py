@@ -8,10 +8,5 @@ def test_isee_transform() -> None:
     df = isee_transform(str(xml_file))
     print(df.head())
     print(len(df))
-    
+
     assert len(df) == 65
-    
-    
-
-    
-
