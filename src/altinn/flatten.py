@@ -34,7 +34,7 @@ def _validate_interninfo(file_path: str) -> bool:
         True if all required keys exist in the 'interninfo'
         dictionary, False otherwise.
     """
-    xml_dict = read_single_xml_to_dict(file_path)
+    xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
 
     required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
@@ -154,7 +154,7 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
 
     """
-    xml_dict = read_single_xml_to_dict(file_path)
+    xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
     angiver_id_row = {
         "FELTNAVN": "ANGIVER_ID",
@@ -247,7 +247,7 @@ def isee_transform(
     """
 
     if utils.is_valid_xml(file_path):
-        if validate_interninfo(file_path):
+        if _validate_interninfo(file_path):
             if mapping is None:
                 mapping = {}
 
