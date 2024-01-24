@@ -31,17 +31,17 @@ class FileInfo:
         # Expand the path to support '~' for home directory
         self.expanded_file_path = os.path.expanduser(file_path)
 
-    def _read_file(self) -> bytes:
+    def _read_file(self) -> str:
         """Read file content based on the file source.
 
         Returns:
-            bytes: The content of the file.
+            The content of the file as string.
         """
         if is_gcs(self.original_file_path):
             fs = FileClient.get_gcs_file_system()
-            return fs.cat_file(self.original_file_path)
+            return fs.cat_file(self.original_file_path)  # type: ignore[no-any-return]
         else:
-            with open(self.expanded_file_path, "rb") as f:
+            with open(self.expanded_file_path) as f:
                 return f.read()
 
     def filename(self) -> str:
@@ -63,7 +63,7 @@ class FileInfo:
     def print(self) -> None:
         """Print unformatted version of an XML file."""
         file_content = self._read_file()
-        print(file_content.decode())
+        print(file_content)
 
     def validate(self) -> bool:
         """Validate the XML file."""

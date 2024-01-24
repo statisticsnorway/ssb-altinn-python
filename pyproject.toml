@@ -2,62 +2,51 @@
 name = "ssb-altinn-python"
 version = "0.3.5"
 description = "SSB Altinn Python"
-authors = ["Øyvind Bruer-Skarsbø <obr@ssb.no>"]
+authors = ["Vidar Strandseter <vidar.strandseter@ssb.no>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/skars82/ssb-altinn-python"
-repository = "https://github.com/skars82/ssb-altinn-python"
-documentation = "https://ssb-altinn-python.readthedocs.io"
-packages = [
-    { include = "altinn", from = "src" },
-]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-]
+homepage = "https://github.com/statisticsnorway/ssb-altinn-python"
+repository = "https://github.com/statisticsnorway/ssb-altinn-python"
+documentation = "https://statisticsnorway.github.io/ssb-altinn-python"
+packages = [{ include = "altinn", from = "src" }]
+classifiers = ["Development Status :: 4 - Beta"]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/skars82/ssb-altinn-python/releases"
+Changelog = "https://github.com/statisticsnorway/ssb-altinn-python/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pytest = "^7.2.2"
-dapla-toolbelt = "^1.6.2"
-defusedxml = "^0.7.1"
-pandas-stubs = "^2.0.0.230412"
-xmltodict = "^0.13.0"
-types-xmltodict = "^0.13.0.3"
+dapla-toolbelt = ">=1.6.2"
+defusedxml = ">=0.7.1"
+pandas = ">=2.2.0"
+pandas-stubs = ">=2.0.0.230412"
+xmltodict = ">=0.13.0"
+types-xmltodict = ">=0.13.0.3"
 
-[tool.poetry.dev-dependencies]
-Pygments = ">=2.10.0"
-black = ">=21.10b0"
-coverage = {extras = ["toml"], version = ">=6.2"}
+[tool.poetry.group.dev.dependencies]
+pygments = ">=2.10.0"
+black = { extras = ["jupyter"], version = ">=23.1.0" }
+coverage = { extras = ["toml"], version = ">=6.2" }
 darglint = ">=1.8.1"
-flake8 = ">=4.0.1"
-flake8-bandit = ">=2.1.2"
-flake8-bugbear = ">=21.9.2"
-flake8-docstrings = ">=1.6.0"
-flake8-rst-docstrings = ">=0.2.5"
 furo = ">=2021.11.12"
-isort = ">=5.10.1"
 mypy = ">=0.930"
-pep8-naming = ">=0.12.1"
 pre-commit = ">=2.16.0"
 pre-commit-hooks = ">=4.1.0"
+ruff = ">=0.0.284"
 pytest = ">=6.2.5"
-pyupgrade = ">=2.29.1"
-safety = ">=2.2.1"
-sphinx = ">=4.3.2"
+sphinx = ">=6.2.1"
 sphinx-autobuild = ">=2021.3.14"
+sphinx-autodoc-typehints = ">=1.24.0"
 sphinx-click = ">=3.0.2"
 typeguard = ">=2.13.3"
-xdoctest = {extras = ["colors"], version = ">=0.15.10"}
-myst-parser = {version = ">=0.16.1"}
+xdoctest = { extras = ["colors"], version = ">=0.15.10" }
+myst-parser = { version = ">=0.16.1" }
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
 
 [tool.poetry.scripts]
 ssb-altinn-python = "altinn.__main__:main"
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.1.14"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -66,23 +55,24 @@ tests = ["tests", "*/tests"]
 [tool.coverage.run]
 branch = true
 source = ["altinn", "tests"]
+relative_files = true
 
 [tool.coverage.report]
 show_missing = true
 fail_under = 50
-
-[tool.isort]
-profile = "black"
-force_single_line = true
-lines_after_imports = 2
 
 [tool.mypy]
 strict = true
 warn_unreachable = true
 pretty = true
 show_column_numbers = true
-show_error_codes = true
 show_error_context = true
+
+[[tool.mypy.overrides]]
+module = [
+    "defusedxml.*",
+]
+ignore_missing_imports = true
 
 [tool.ruff]
 force-exclude = true  # Apply excludes to pre-commit
@@ -92,16 +82,16 @@ target-version = "py39"  # Minimum Python version supported
 
 # Ruff rules may be customized as desired: https://docs.astral.sh/ruff/rules/
 select = [
-    "A",       # prevent using keywords that clobber python builtins
-    "ANN",     # check type annotations
-    "B",       # bugbear: security warnings
-    "D",       # documentation
-    "E",       # pycodestyle
-    "F",       # pyflakes
-    "ISC",     # implicit string concatenation
-    "I",       # sort imports
-    "UP",      # alert you when better syntax is available in your python version
-    "RUF",     # the ruff developer's own rules
+    "A",    # prevent using keywords that clobber python builtins
+    "ANN",  # check type annotations
+    "B",    # bugbear: security warnings
+    "D",    # documentation
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "ISC",  # implicit string concatenation
+    "I",    # sort imports
+    "UP",   # alert you when better syntax is available in your python version
+    "RUF",  # the ruff developer's own rules
 ]
 ignore = [
     "ANN101", # Supress missing-type-self.

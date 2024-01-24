@@ -13,8 +13,7 @@ class TestFileInfo:
     """A test class for the FileInfo class."""
 
     # other test methods...
-
-    def test_pretty_print_local(self, monkeypatch: MonkeyPatch):
+    def test_pretty_print_local(self, monkeypatch: MonkeyPatch) -> None:
         """Test pretty_print method for local files in XmlFile class."""
         xml_string = """<?xml version="1.0" encoding="UTF-8"?>
         <root>
@@ -32,7 +31,7 @@ class TestFileInfo:
         local_file_info = FileInfo("path/to/local_file.xml")
         local_file_info.pretty_print()
 
-    def test_pretty_print_gcs(self, monkeypatch: MonkeyPatch):
+    def test_pretty_print_gcs(self, monkeypatch: MonkeyPatch) -> None:
         """Test pretty_print method for GCS files in XmlFile class."""
         xml_string = """<?xml version="1.0" encoding="UTF-8"?>
         <root>
@@ -41,8 +40,8 @@ class TestFileInfo:
         """
 
         # Mock the cat_file method for GCS file handling
-        def mock_cat_file(*args, **kwargs) -> bytes:
-            return xml_string.encode()
+        def mock_cat_file(*args, **kwargs) -> str:  # type: ignore[no-untyped-def]
+            return xml_string
 
         # Continue with your existing GCS mocking
         file_client_mock = MagicMock()
