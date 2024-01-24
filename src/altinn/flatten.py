@@ -8,7 +8,6 @@ of Altinn3. This is done in a separate file.
 """
 
 
-from collections import OrderedDict
 from typing import Any
 from typing import Optional
 
@@ -19,7 +18,7 @@ from dapla import FileClient
 from altinn import utils
 
 
-def validate_interninfo(file_path: str) -> bool:
+def _validate_interninfo(file_path: str) -> bool:
     """Validate interninfo.
 
     Validates the presence of required keys
@@ -34,17 +33,17 @@ def validate_interninfo(file_path: str) -> bool:
         True if all required keys exist in the 'interninfo'
         dictionary, False otherwise.
     """
-    xml_dict = read_single_xml_to_dict(file_path)
+    xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
 
     required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
 
     missing_keys = [
-        key for key in required_keys if key not in xml_dict[root_element]["interninfo"]
+        key for key in required_keys if key not in xml_dict[root_element]["InternInfo"]
     ]
 
     if missing_keys:
-        print("The following required keys are missing in ['interninfo']:")
+        print("The following required keys are missing in ['InternInfo']:")
         for key in missing_keys:
             print(key)
         print("No output will be produced")
@@ -54,8 +53,8 @@ def validate_interninfo(file_path: str) -> bool:
         return True
 
 
-def read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
-    """Reads XML-file from GCS and transforms it to a dictionary.
+def _read_single_xml_to_dict(file_path: str) -> dict[str, Any]:
+    """Reads XML-file from GCS or local file, and transforms it to a dictionary.
 
     Args:
         file_path: The path to the XML file
@@ -63,10 +62,15 @@ def read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
     Returns:
         A dictionary with data from a XML
     """
-    fs = FileClient.get_gcs_file_system()
+    if utils.is_gcs(file_path):
+        fs = FileClient.get_gcs_file_system()
 
-    with fs.open(file_path, mode="r") as xml_file:
-        data_dict = xmltodict.parse(xml_file.read())
+        with fs.open(file_path, mode="r") as xml_file:
+            data_dict = xmltodict.parse(xml_file.read())
+
+    else:
+        with open(file_path) as xml_file:
+            data_dict = xmltodict.parse(xml_file.read())
 
     return data_dict
 
@@ -94,9 +98,9 @@ def _make_isee_dict(
     dict_value: str,
     counter: int,
     subcounter: int,
-    key_level1: int | None,
-    key_level2: int | None,
-    key_level3: int | None,
+    key_level1: str | None,
+    key_level2: str | None,
+    key_level3: str | None,
     level: int,
 ) -> dict[str, Any]:
     """Makes a dictionary.
@@ -149,18 +153,18 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
 
     """
-    xml_dict = read_single_xml_to_dict(file_path)
+    xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
     angiver_id_row = {
         "FELTNAVN": "ANGIVER_ID",
         "FELTVERDI": _extract_angiver_id(file_path),
         "RAD_NR": 0,
         "REP_NR": 0,
-        "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
+        "IDENT_NR": xml_dict[root_element]["InternInfo"]["enhetsIdent"],
         "VERSION_NR": _extract_angiver_id(file_path),
-        "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
-        "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
-        "SKJEMA_ID": xml_dict[root_element]["interninfo"]["raNummer"],
+        "DELREGNR": xml_dict[root_element]["InternInfo"]["delregNr"],
+        "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
+        "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"],
     }
 
     return pd.DataFrame([angiver_id_row])
@@ -240,90 +244,49 @@ def isee_transform(
     Raises:
         ValueError: If invalid gcs-file or xml-file.
     """
-    if utils.is_gcs(file_path):
-        if utils.is_valid_xml(file_path):
-            if validate_interninfo(file_path):
-                if mapping is None:
-                    mapping = {}
+    if utils.is_valid_xml(file_path):
+        if _validate_interninfo(file_path):
+            if mapping is None:
+                mapping = {}
 
-                xml_dict = read_single_xml_to_dict(file_path)
-                root_element = next(iter(xml_dict.keys()))
-                input_dict = xml_dict[root_element]["SkjemaData"]
+            xml_dict = _read_single_xml_to_dict(file_path)
+            root_element = next(iter(xml_dict.keys()))
+            input_dict = xml_dict[root_element]["SkjemaData"]
 
-                # pprint(input_dict, sort_dicts=False, width=200, indent=2)
+            # pprint(input_dict, sort_dicts=False, width=200, indent=2)
 
-                final_list = []
-                for key, value in input_dict.items():
-                    counter = 0
-                    subcounter = 0
+            final_list = []
+            for key, value in input_dict.items():
+                counter = 0
+                subcounter = 0
 
-                    if isinstance(value, list):
-                        for element in value:
-                            counter += 1
+                if isinstance(value, list):
+                    for element in value:
+                        counter += 1
 
-                            if isinstance(element, dict):
-                                for subkey, subvalue in element.items():
-                                    if not isinstance(subvalue, (list, dict)):
-                                        final_list.append(
-                                            _make_isee_dict(
-                                                subkey,
-                                                subvalue,
-                                                counter,
-                                                0,
-                                                key,
-                                                None,
-                                                None,
-                                                1,
-                                            )
+                        if isinstance(element, dict):
+                            for subkey, subvalue in element.items():
+                                if not isinstance(subvalue, (list, dict)):
+                                    final_list.append(
+                                        _make_isee_dict(
+                                            subkey,
+                                            subvalue,
+                                            counter,
+                                            0,
+                                            key,
+                                            None,
+                                            None,
+                                            1,
                                         )
+                                    )
 
-                                    if isinstance(subvalue, list):
-                                        subcounter = 1
-                                        for subelement in subvalue:
-                                            for (
-                                                subsubkey,
-                                                subsubvalue,
-                                            ) in subelement.items():
-                                                if not isinstance(
-                                                    subsubvalue, (list, dict)
-                                                ):
-                                                    final_list.append(
-                                                        _make_isee_dict(
-                                                            subsubkey,
-                                                            subsubvalue,
-                                                            counter,
-                                                            subcounter,
-                                                            key,
-                                                            subkey,
-                                                            None,
-                                                            2,
-                                                        )
-                                                    )
-
-                                                if isinstance(subsubvalue, (dict)):
-                                                    for (
-                                                        _,
-                                                        dictsubsubvalue,
-                                                    ) in subsubvalue.items():
-                                                        final_list.append(
-                                                            _make_isee_dict(
-                                                                subsubkey,
-                                                                dictsubsubvalue,
-                                                                counter,
-                                                                subcounter,
-                                                                key,
-                                                                subkey,
-                                                                None,
-                                                                2,
-                                                            )
-                                                        )
-
-                                            subcounter += 1
-
-                                    if isinstance(subvalue, dict):
-                                        subcounter = 1
-
-                                        for subsubkey, subsubvalue in subvalue.items():
+                                if isinstance(subvalue, list):
+                                    subcounter = 1
+                                    for subelement in subvalue:
+                                        for (
+                                            subsubkey,
+                                            subsubvalue,
+                                        ) in subelement.items():
                                             if not isinstance(
                                                 subsubvalue, (list, dict)
                                             ):
@@ -342,51 +305,107 @@ def isee_transform(
 
                                             if isinstance(subsubvalue, (dict)):
                                                 for (
-                                                    subsubsubkey,
-                                                    subsubsubvalue,
+                                                    _,
+                                                    dictsubsubvalue,
                                                 ) in subsubvalue.items():
                                                     final_list.append(
                                                         _make_isee_dict(
-                                                            subsubsubkey,
-                                                            subsubsubvalue,
+                                                            subsubkey,
+                                                            dictsubsubvalue,
                                                             counter,
                                                             subcounter,
                                                             key,
                                                             subkey,
-                                                            subsubsubkey,
-                                                            3,
+                                                            None,
+                                                            2,
                                                         )
                                                     )
 
                                         subcounter += 1
 
-                    elif isinstance(value, dict):
-                        for sub_dict_key, sub_dict_value in value.items():
-                            counter = 1
+                                if isinstance(subvalue, dict):
+                                    subcounter = 1
 
-                            if not isinstance(sub_dict_value, (dict, list)):
-                                final_list.append(
-                                    _make_isee_dict(
-                                        sub_dict_key,
-                                        sub_dict_value,
-                                        counter,
-                                        0,
-                                        key,
-                                        None,
-                                        None,
-                                        1,
-                                    )
-                                )
-
-                            if isinstance(sub_dict_value, list):
-                                subcounter = 1
-                                for subelement in sub_dict_value:
-                                    for subkey, subvalue in subelement.items():
-                                        if not isinstance(subvalue, (dict, list)):
+                                    for subsubkey, subsubvalue in subvalue.items():
+                                        if not isinstance(subsubvalue, (list, dict)):
                                             final_list.append(
                                                 _make_isee_dict(
+                                                    subsubkey,
+                                                    subsubvalue,
+                                                    counter,
+                                                    subcounter,
+                                                    key,
                                                     subkey,
-                                                    subvalue,
+                                                    None,
+                                                    2,
+                                                )
+                                            )
+
+                                        if isinstance(subsubvalue, (dict)):
+                                            for (
+                                                subsubsubkey,
+                                                subsubsubvalue,
+                                            ) in subsubvalue.items():
+                                                final_list.append(
+                                                    _make_isee_dict(
+                                                        subsubsubkey,
+                                                        subsubsubvalue,
+                                                        counter,
+                                                        subcounter,
+                                                        key,
+                                                        subkey,
+                                                        subsubsubkey,
+                                                        3,
+                                                    )
+                                                )
+
+                                    subcounter += 1
+
+                elif isinstance(value, dict):
+                    for sub_dict_key, sub_dict_value in value.items():
+                        counter = 1
+
+                        if not isinstance(sub_dict_value, (dict, list)):
+                            final_list.append(
+                                _make_isee_dict(
+                                    sub_dict_key,
+                                    sub_dict_value,
+                                    counter,
+                                    0,
+                                    key,
+                                    None,
+                                    None,
+                                    1,
+                                )
+                            )
+
+                        if isinstance(sub_dict_value, list):
+                            subcounter = 1
+                            for subelement in sub_dict_value:
+                                for subkey, subvalue in subelement.items():
+                                    if not isinstance(subvalue, (dict, list)):
+                                        final_list.append(
+                                            _make_isee_dict(
+                                                subkey,
+                                                subvalue,
+                                                counter,
+                                                subcounter,
+                                                key,
+                                                sub_dict_key,
+                                                None,
+                                                2,
+                                            )
+                                        )
+
+                                    if isinstance(subvalue, dict):
+                                        for (
+                                            dict_dict_key,
+                                            dict_dict_value,
+                                        ) in subvalue.items():
+                                            final_list.append(
+                                                _make_isee_dict(
+                                                    dict_dict_key,
+                                                    dict_dict_value,
                                                     counter,
                                                     subcounter,
                                                     key,
@@ -396,105 +415,78 @@ def isee_transform(
                                                 )
                                             )
 
-                                        if isinstance(subvalue, dict):
-                                            for (
-                                                dict_dict_key,
-                                                dict_dict_value,
-                                            ) in subvalue.items():
-                                                final_list.append(
-                                                    _make_isee_dict(
-                                                        dict_dict_key,
-                                                        dict_dict_value,
-                                                        counter,
-                                                        subcounter,
-                                                        key,
-                                                        sub_dict_key,
-                                                        None,
-                                                        2,
-                                                    )
-                                                )
+                                        subcounter += 1
+                            counter += 1
 
-                                            subcounter += 1
-                                counter += 1
+                        if isinstance(sub_dict_value, dict):
+                            for (
+                                dict_dict_key,
+                                dict_dict_value,
+                            ) in sub_dict_value.items():
+                                if not isinstance(dict_dict_value, (list, dict)):
+                                    final_list.append(
+                                        _make_isee_dict(
+                                            dict_dict_key,
+                                            dict_dict_value,
+                                            counter,
+                                            0,
+                                            key,
+                                            sub_dict_key,
+                                            None,
+                                            2,
+                                        )
+                                    )
 
-                            if isinstance(sub_dict_value, dict):
-                                for (
-                                    dict_dict_key,
-                                    dict_dict_value,
-                                ) in sub_dict_value.items():
-                                    if not isinstance(dict_dict_value, (list, dict)):
+                                if isinstance(dict_dict_value, dict):
+                                    for (
+                                        dict_dict_dict_key,
+                                        dict_dict_dict_value,
+                                    ) in dict_dict_value.items():
                                         final_list.append(
                                             _make_isee_dict(
-                                                dict_dict_key,
-                                                dict_dict_value,
+                                                dict_dict_dict_key,
+                                                dict_dict_dict_value,
                                                 counter,
                                                 0,
                                                 key,
                                                 sub_dict_key,
-                                                None,
-                                                2,
+                                                dict_dict_key,
+                                                3,
                                             )
                                         )
 
-                                    if isinstance(dict_dict_value, dict):
-                                        for (
-                                            dict_dict_dict_key,
-                                            dict_dict_dict_value,
-                                        ) in dict_dict_value.items():
-                                            final_list.append(
-                                                _make_isee_dict(
-                                                    dict_dict_dict_key,
-                                                    dict_dict_dict_value,
-                                                    counter,
-                                                    0,
-                                                    key,
-                                                    sub_dict_key,
-                                                    dict_dict_key,
-                                                    3,
-                                                )
-                                            )
+                elif not isinstance(value, (dict, list)):
+                    final_list.append(
+                        _make_isee_dict(key, value, counter, 0, None, None, None, 0)
+                    )
 
-                    elif not isinstance(value, (dict, list)):
-                        final_list.append(
-                            _make_isee_dict(key, value, counter, 0, None, None, None, 0)
-                        )
+            final_df = pd.DataFrame(final_list)
+            final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
+            final_df["VERSION_NR"] = _extract_angiver_id(file_path)
+            final_df["DELREGNR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
+            final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
+            final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"]
 
-                final_df = pd.DataFrame(final_list)
-                final_df["IDENT_NR"] = xml_dict[root_element]["interninfo"][
-                    "enhetsIdent"
-                ]
-                final_df["VERSION_NR"] = _extract_angiver_id(file_path)
-                final_df["DELREGNR"] = xml_dict[root_element]["interninfo"]["delregNr"]
-                final_df["ENHETS_TYPE"] = xml_dict[root_element]["interninfo"][
-                    "enhetsType"
-                ]
-                final_df["SKJEMA_ID"] = xml_dict[root_element]["interninfo"]["raNummer"]
+            final_df = final_df[final_df["FELTNAVN"] != "@xsi:nil"]
 
-                final_df = final_df[final_df["FELTNAVN"] != "@xsi:nil"]
+            final_df["FELTNAVN"] = final_df["CHILD_OF"] + "_" + final_df["FELTNAVN"]
+            final_df = final_df.drop(["CHILD_OF"], axis=1)
 
-                final_df["FELTNAVN"] = final_df["CHILD_OF"] + "_" + final_df["FELTNAVN"]
-                final_df = final_df.drop(["CHILD_OF"], axis=1)
+            final_df = pd.concat(
+                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+            )
 
-                final_df = pd.concat(
-                    [final_df, _make_angiver_row_df(file_path)], ignore_index=True
-                )
+            final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix("SkjemaData_")
 
-                final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix(
-                    "SkjemaData_"
-                )
+            if mapping is not None:
+                final_df["FELTNAVN"].replace(mapping, inplace=True)
 
-                if mapping is not None:
-                    final_df["FELTNAVN"].replace(mapping, inplace=True)
+            final_df = _add_lopenr(final_df)
 
-                final_df = _add_lopenr(final_df)
+            return final_df
 
-                return final_df
-
-        else:
-            error_message = f"File is not a valid XML-file: {file_path}"
-            raise ValueError(error_message)
     else:
-        error_message = f"File is not a valid GCS-file: {file_path}"
+        error_message = f"File is not a valid XML-file: {file_path}"
         raise ValueError(error_message)
 
     return pd.DataFrame()  # Should never reach this point, but need a return value
