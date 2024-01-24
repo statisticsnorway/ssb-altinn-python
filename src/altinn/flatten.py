@@ -8,7 +8,6 @@ of Altinn3. This is done in a separate file.
 """
 
 
-from collections import OrderedDict
 from typing import Any
 from typing import Optional
 
@@ -40,11 +39,11 @@ def _validate_interninfo(file_path: str) -> bool:
     required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
 
     missing_keys = [
-        key for key in required_keys if key not in xml_dict[root_element]["interninfo"]
+        key for key in required_keys if key not in xml_dict[root_element]["InternInfo"]
     ]
 
     if missing_keys:
-        print("The following required keys are missing in ['interninfo']:")
+        print("The following required keys are missing in ['InternInfo']:")
         for key in missing_keys:
             print(key)
         print("No output will be produced")
@@ -54,7 +53,7 @@ def _validate_interninfo(file_path: str) -> bool:
         return True
 
 
-def _read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
+def _read_single_xml_to_dict(file_path: str) -> dict[str, Any]:
     """Reads XML-file from GCS or local file, and transforms it to a dictionary.
 
     Args:
@@ -70,7 +69,7 @@ def _read_single_xml_to_dict(file_path: str) -> OrderedDict[str, Any]:
             data_dict = xmltodict.parse(xml_file.read())
 
     else:
-        with open(file_path, mode="r") as xml_file:
+        with open(file_path) as xml_file:
             data_dict = xmltodict.parse(xml_file.read())
 
     return data_dict
@@ -99,9 +98,9 @@ def _make_isee_dict(
     dict_value: str,
     counter: int,
     subcounter: int,
-    key_level1: int | None,
-    key_level2: int | None,
-    key_level3: int | None,
+    key_level1: str | None,
+    key_level2: str | None,
+    key_level3: str | None,
     level: int,
 ) -> dict[str, Any]:
     """Makes a dictionary.
@@ -161,11 +160,11 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         "FELTVERDI": _extract_angiver_id(file_path),
         "RAD_NR": 0,
         "REP_NR": 0,
-        "IDENT_NR": xml_dict[root_element]["interninfo"]["enhetsIdent"],
+        "IDENT_NR": xml_dict[root_element]["InternInfo"]["enhetsIdent"],
         "VERSION_NR": _extract_angiver_id(file_path),
-        "DELREGNR": xml_dict[root_element]["interninfo"]["delregNr"],
-        "ENHETS_TYPE": xml_dict[root_element]["interninfo"]["enhetsType"],
-        "SKJEMA_ID": xml_dict[root_element]["interninfo"]["raNummer"],
+        "DELREGNR": xml_dict[root_element]["InternInfo"]["delregNr"],
+        "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
+        "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"],
     }
 
     return pd.DataFrame([angiver_id_row])
@@ -245,14 +244,13 @@ def isee_transform(
     Raises:
         ValueError: If invalid gcs-file or xml-file.
     """
-
     if utils.is_valid_xml(file_path):
         if _validate_interninfo(file_path):
             if mapping is None:
                 mapping = {}
 
             xml_dict = _read_single_xml_to_dict(file_path)
-            root_element = list(xml_dict.keys())[0]
+            root_element = next(iter(xml_dict.keys()))
             input_dict = xml_dict[root_element]["SkjemaData"]
 
             # pprint(input_dict, sort_dicts=False, width=200, indent=2)
@@ -329,9 +327,7 @@ def isee_transform(
                                     subcounter = 1
 
                                     for subsubkey, subsubvalue in subvalue.items():
-                                        if not isinstance(
-                                            subsubvalue, (list, dict)
-                                        ):
+                                        if not isinstance(subsubvalue, (list, dict)):
                                             final_list.append(
                                                 _make_isee_dict(
                                                     subsubkey,
@@ -465,15 +461,11 @@ def isee_transform(
                     )
 
             final_df = pd.DataFrame(final_list)
-            final_df["IDENT_NR"] = xml_dict[root_element]["interninfo"][
-                "enhetsIdent"
-            ]
+            final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
-            final_df["DELREGNR"] = xml_dict[root_element]["interninfo"]["delregNr"]
-            final_df["ENHETS_TYPE"] = xml_dict[root_element]["interninfo"][
-                "enhetsType"
-            ]
-            final_df["SKJEMA_ID"] = xml_dict[root_element]["interninfo"]["raNummer"]
+            final_df["DELREGNR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
+            final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
+            final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"]
 
             final_df = final_df[final_df["FELTNAVN"] != "@xsi:nil"]
 
@@ -484,9 +476,7 @@ def isee_transform(
                 [final_df, _make_angiver_row_df(file_path)], ignore_index=True
             )
 
-            final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix(
-                "SkjemaData_"
-            )
+            final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix("SkjemaData_")
 
             if mapping is not None:
                 final_df["FELTNAVN"].replace(mapping, inplace=True)
