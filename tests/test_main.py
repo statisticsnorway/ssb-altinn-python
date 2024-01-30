@@ -19,8 +19,12 @@ def test_main_script_execution() -> None:
     with patch("altinn.file.main") as mock_main:
         script_path = os.path.abspath(
             os.path.join(
-                os.path.dirname(__file__), "..", "src", "altinn", "__main__.py"
-            )
+                os.path.dirname(__file__),
+                "..",
+                "src",
+                "altinn",
+                "__main__.py",
+            ),
         )
         spec = importlib.util.spec_from_file_location("__main__", script_path)
         if spec:

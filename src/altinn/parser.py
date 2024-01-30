@@ -1,4 +1,5 @@
 """This module contains the main function for running the Altinn application."""
+
 import os
 from typing import Any
 from typing import Optional
@@ -54,7 +55,10 @@ class ParseSingleXml:
             data = {}
 
         def recursive_traverse(
-            element: Element, column_counter: int, data: dict[str, Any], prefix: str
+            element: Element,
+            column_counter: int,
+            data: dict[str, Any],
+            prefix: str,
         ) -> None:
             for sub_element in element:
                 tag_name = sub_element.tag

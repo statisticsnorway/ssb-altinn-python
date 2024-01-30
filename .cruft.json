@@ -1,7 +1,7 @@
 {
   "template": "https://github.com/statisticsnorway/ssb-pypitemplate.git",
-  "commit": "8a5c60c72f9395ee9f52edd62d5879212d1da14f",
-  "checkout": "2024.1.18",
+  "commit": "e81154758223bbeb62e2117de27029295c13e126",
+  "checkout": null,
   "context": {
     "cookiecutter": {
       "project_name": "ssb-altinn-python",
