@@ -96,7 +96,7 @@ mapping = {'kontAmbulForeDispJaNei':'ISEE_VAR1',
 
 isee_transform(file, mapping)
 ```
-The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE. 
+The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE.
 
 The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
 - 'enhetsIdent'

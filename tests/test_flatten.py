@@ -9,4 +9,4 @@ def test_isee_transform() -> None:
     print(df.head())
     print(len(df))
 
-    assert len(df) == 65
+    assert len(df) == 61

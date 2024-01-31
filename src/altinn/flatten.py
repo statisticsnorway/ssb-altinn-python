@@ -479,7 +479,7 @@ def isee_transform(
             final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix("SkjemaData_")
 
             if mapping is not None:
-                final_df["FELTNAVN"].replace(mapping, inplace=True)
+                final_df["FELTNAVN"]  = final_df["FELTNAVN"].replace(mapping)
 
             final_df = _add_lopenr(final_df)
 
