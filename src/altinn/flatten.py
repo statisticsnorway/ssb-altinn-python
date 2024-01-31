@@ -310,14 +310,14 @@ def isee_transform(
                                                 ) in subsubvalue.items():
                                                     final_list.append(
                                                         _make_isee_dict(
-                                                            subsubkey,
+                                                            _,
                                                             dictsubsubvalue,
                                                             counter,
                                                             subcounter,
                                                             key,
                                                             subkey,
                                                             None,
-                                                            2,
+                                                            3,
                                                         )
                                                     )
 
