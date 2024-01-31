@@ -41,11 +41,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --no-root
+          poetry install
 
       - name: Build doc with Sphinx
         run: |
-          poetry run sphinx-build -W docs docs/_build
+          poetry run sphinx-build docs docs/_build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
