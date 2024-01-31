@@ -34,7 +34,7 @@ This is work-in-progress Python-package for dealing with xml-data from Altinn3. 
 ```python
 from altinn import FileInfo
 
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
 
 # Create an instance of FileInfo
 form = FileInfo(file)
@@ -61,7 +61,7 @@ If you want to transform an Altinn3 xml-file to a Pandas Dataframe, you can use 
 ```python
 from altinn import ParseSingleXml
 
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
 
 form_content=ParseSingleXml(file)
 
@@ -78,7 +78,7 @@ If you want to transform an Altinn3 xml-file to a Pandas Dataframe, in the same 
 ```python
 from altinn import isee_transform
 
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
 
 isee_transform(file)
 ```
@@ -88,17 +88,15 @@ If you want to recode/map names in the FELTNAVN-column, you can use a dictionary
 ```python
 from altinn import isee_transform
 
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/form_dc551844cd74.xml"
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
 
-mapping = {
-    "original_name1": "ISEE_name1",
-    "original_name2": "ISEE_name2",
-    "original_name2": "ISEE_name3",
-}
+mapping = {'kontAmbulForeDispJaNei':'ISEE_VAR1',
+           'kontAmbulForeDispAnt':'ISEE_VAR2',
+           'kontAmbulForeDriftAnt':'ISEE_VAR3',}
 
 isee_transform(file, mapping)
 ```
-The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE. In this case no suffix will be added.
+The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE. 
 
 The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
 - 'enhetsIdent'
