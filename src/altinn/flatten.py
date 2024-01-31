@@ -7,7 +7,6 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
-
 from typing import Any
 from typing import Optional
 
@@ -129,13 +128,19 @@ def _make_isee_dict(
         "FELTVERDI": dict_value,
         "RAD_NR": counter,
         "REP_NR": subcounter,
-        "CHILD_OF": "SkjemaData"
-        if level == 0
-        else f"SkjemaData_{key_level1}"
-        if level == 1
-        else f"SkjemaData_{key_level1}_{key_level2}"
-        if level == 2
-        else f"SkjemaData_{key_level1}_{key_level2}_{key_level3}",
+        "CHILD_OF": (
+            "SkjemaData"
+            if level == 0
+            else (
+                f"SkjemaData_{key_level1}"
+                if level == 1
+                else (
+                    f"SkjemaData_{key_level1}_{key_level2}"
+                    if level == 2
+                    else f"SkjemaData_{key_level1}_{key_level2}_{key_level3}"
+                )
+            )
+        ),
     }
 
     return data_dict
@@ -203,26 +208,28 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 
         if duplicate_feltnavn:
             print(
-                "\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell)."
+                "\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell).",
             )
             print(
-                "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE."
+                "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE.",
             )
             print(
-                "Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer: \033[0m"
+                "Ikke alle gjentagende FELTNAVN har fått påkoblet løpenummer: \033[0m",
             )
             for var in duplicate_feltnavn:
                 print(var)
 
     df.drop(
-        columns=["RAD_NR", "REP_NR"], inplace=True
+        columns=["RAD_NR", "REP_NR"],
+        inplace=True,
     )  # Drop RAD_NR and REP_NR columns
 
     return df
 
 
 def isee_transform(
-    file_path: str, mapping: Optional[dict[str, str]] = None
+    file_path: str,
+    mapping: Optional[dict[str, str]] = None,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -277,7 +284,7 @@ def isee_transform(
                                             None,
                                             None,
                                             1,
-                                        )
+                                        ),
                                     )
 
                                 if isinstance(subvalue, list):
@@ -288,7 +295,8 @@ def isee_transform(
                                             subsubvalue,
                                         ) in subelement.items():
                                             if not isinstance(
-                                                subsubvalue, (list, dict)
+                                                subsubvalue,
+                                                (list, dict),
                                             ):
                                                 final_list.append(
                                                     _make_isee_dict(
@@ -300,7 +308,7 @@ def isee_transform(
                                                         subkey,
                                                         None,
                                                         2,
-                                                    )
+                                                    ),
                                                 )
 
                                             if isinstance(subsubvalue, (dict)):
@@ -318,7 +326,7 @@ def isee_transform(
                                                             subkey,
                                                             None,
                                                             3,
-                                                        )
+                                                        ),
                                                     )
 
                                         subcounter += 1
@@ -338,7 +346,7 @@ def isee_transform(
                                                     subkey,
                                                     None,
                                                     2,
-                                                )
+                                                ),
                                             )
 
                                         if isinstance(subsubvalue, (dict)):
@@ -356,7 +364,7 @@ def isee_transform(
                                                         subkey,
                                                         subsubsubkey,
                                                         3,
-                                                    )
+                                                    ),
                                                 )
 
                                     subcounter += 1
@@ -376,7 +384,7 @@ def isee_transform(
                                     None,
                                     None,
                                     1,
-                                )
+                                ),
                             )
 
                         if isinstance(sub_dict_value, list):
@@ -394,7 +402,7 @@ def isee_transform(
                                                 sub_dict_key,
                                                 None,
                                                 2,
-                                            )
+                                            ),
                                         )
 
                                     if isinstance(subvalue, dict):
@@ -412,7 +420,7 @@ def isee_transform(
                                                     sub_dict_key,
                                                     None,
                                                     2,
-                                                )
+                                                ),
                                             )
 
                                         subcounter += 1
@@ -434,7 +442,7 @@ def isee_transform(
                                             sub_dict_key,
                                             None,
                                             2,
-                                        )
+                                        ),
                                     )
 
                                 if isinstance(dict_dict_value, dict):
@@ -452,12 +460,12 @@ def isee_transform(
                                                 sub_dict_key,
                                                 dict_dict_key,
                                                 3,
-                                            )
+                                            ),
                                         )
 
                 elif not isinstance(value, (dict, list)):
                     final_list.append(
-                        _make_isee_dict(key, value, counter, 0, None, None, None, 0)
+                        _make_isee_dict(key, value, counter, 0, None, None, None, 0),
                     )
 
             final_df = pd.DataFrame(final_list)
@@ -473,13 +481,14 @@ def isee_transform(
             final_df = final_df.drop(["CHILD_OF"], axis=1)
 
             final_df = pd.concat(
-                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+                [final_df, _make_angiver_row_df(file_path)],
+                ignore_index=True,
             )
 
             final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix("SkjemaData_")
 
             if mapping is not None:
-                final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
+                final_df["FELTNAVN"]  = final_df["FELTNAVN"].replace(mapping)
 
             final_df = _add_lopenr(final_df)
 
