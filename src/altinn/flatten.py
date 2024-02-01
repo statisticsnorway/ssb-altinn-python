@@ -318,14 +318,14 @@ def isee_transform(
                                                 ) in subsubvalue.items():
                                                     final_list.append(
                                                         _make_isee_dict(
-                                                            subsubkey,
+                                                            _,
                                                             dictsubsubvalue,
                                                             counter,
                                                             subcounter,
                                                             key,
                                                             subkey,
                                                             None,
-                                                            2,
+                                                            3,
                                                         ),
                                                     )
 
@@ -488,7 +488,7 @@ def isee_transform(
             final_df["FELTNAVN"] = final_df["FELTNAVN"].str.removeprefix("SkjemaData_")
 
             if mapping is not None:
-                final_df["FELTNAVN"].replace(mapping, inplace=True)
+                final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
 
             final_df = _add_lopenr(final_df)
 
