@@ -41,7 +41,7 @@ def _extract_counter(value: str) -> list[str]:
 
 
 def _flatten_dict(d: MutableMapping[str, Union[MutableMapping, list, int, float, str]],
-                   parent_key: str = '', sep: str = '_') -> MutableMapping[str, Union[int, float, str]]:
+                   parent_key: str = '', sep: str = '_') -> MutableMapping[str, Union[MutableMapping, list, int, float, str]]:
     """Flatten a nested dictionary with an optional separator for keys.
 
     Args:
