@@ -29,48 +29,6 @@
 
 This is work-in-progress Python-package for dealing with xml-data from Altinn3. Here are some examples of how it can be used:
 
-### Get information about a file
-
-```python
-from altinn import FileInfo
-
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
-
-# Create an instance of FileInfo
-form = FileInfo(file)
-
-# Get file filename without '.xml'-postfix
-form.filename()
-# Returns: 'form_dc551844cd74'
-
-# Print an unformatted version of the file. Does not require the file to be parseable by an xml-library. Useful for inspecting unvalid xml-files.
-form.print()
-
-# Print a nicely formatted version of the file
-form.pretty_print()
-
-# Check if xml-file is valid. Useful to inspect xml-files with formal errors in the xml-schema.
-form.validate()
-# Returns True og False
-```
-
-### Parse xml-file
-
-If you want to transform an Altinn3 xml-file to a Pandas Dataframe, you can use the ParseSingleXml-class.
-
-```python
-from altinn import ParseSingleXml
-
-file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
-
-form_content=ParseSingleXml(file)
-
-# Get a Pandas Dataframe representation of the contents of the file
-df=form_content.to_dataframe()
-
-df.head()
-```
-
 ### Transform to ISEE-Dynarev format
 
 If you want to transform an Altinn3 xml-file to a Pandas Dataframe, in the same form as the ISEE Dynarev database in our on-prem environment, you can use the `isee_transform`-function.
@@ -118,12 +76,55 @@ The resulting object is a Pandas Dataframe with the following columns:
 
 This dataframe can be written to csv and uploaded to the ISEE Dynarev database.
 
+### Get information about a file
+
+```python
+from altinn import FileInfo
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
+
+# Create an instance of FileInfo
+form = FileInfo(file)
+
+# Get file filename without '.xml'-postfix
+form.filename()
+# Returns: 'form_dc551844cd74'
+
+# Print an unformatted version of the file. Does not require the file to be parseable by an xml-library. Useful for inspecting unvalid xml-files.
+form.print()
+
+# Print a nicely formatted version of the file
+form.pretty_print()
+
+# Check if xml-file is valid. Useful to inspect xml-files with formal errors in the xml-schema.
+form.validate()
+# Returns True og False
+```
+
+### Parse xml-file
+
+If you want to transform an Altinn3 xml-file to a Pandas Dataframe, you can use the ParseSingleXml-class.
+
+```python
+from altinn import ParseSingleXml
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
+
+form_content=ParseSingleXml(file)
+
+# Get a Pandas Dataframe representation of the contents of the file
+df=form_content.to_dataframe()
+
+df.head()
+```
+
 ## Requirements
 
 - dapla-toolbelt >=1.6.2
 - defusedxml >=0.7.1
 - xmltodict >=0.13.0
 - pandas >= 2.2.0
+
 
 ## Installation
 
