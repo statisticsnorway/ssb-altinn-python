@@ -7,14 +7,10 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
+import re
+from collections.abc import MutableMapping
 from typing import Any
 from typing import Optional
-from typing import List
-from typing import MutableMapping
-from typing import Union
-
-from collections.abc import MutableMapping
-import re
 
 import pandas as pd
 import xmltodict
@@ -36,12 +32,11 @@ def _extract_counter(value: str) -> list[str]:
         >>> _extract_counter('£3$ £2$ £1$')
         ['3', '2', '1']
     """
-    matches = re.findall(r'£(.*?)\$', value)
+    matches = re.findall(r"£(.*?)\$", value)
     return matches
 
 
-def _flatten_dict(d: MutableMapping[str, Union[MutableMapping, list, int, float, str]],
-                   parent_key: str = '', sep: str = '_') -> MutableMapping[str, Union[MutableMapping, list, int, float, str]]:
+def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
     """Flatten a nested dictionary with an optional separator for keys.
 
     Args:
@@ -51,13 +46,8 @@ def _flatten_dict(d: MutableMapping[str, Union[MutableMapping, list, int, float,
 
     Returns:
         The flattened dictionary.
-
-    Example:
-        >>> nested_dict = {'a': 1, 'b': {'c': 2, 'd': {'e': 3, 'f': [4, 5]}}}
-        >>> _flatten_dict(nested_dict)
-        {'a': 1, 'b_c': 2, 'b_d_e': 3, 'b_d_f_0': 4, 'b_d_f_1': 5}
     """
-    items = []
+    items: list[tuple[str, str]] = []
     counter = 0
 
     for k, v in d.items():
@@ -65,21 +55,26 @@ def _flatten_dict(d: MutableMapping[str, Union[MutableMapping, list, int, float,
 
         if isinstance(v, MutableMapping):
             counter += 1
-            items.extend(_flatten_dict(v, "£" + str(counter) + "$" + new_key, sep=sep).items())
-            
-            
+            items.extend(
+                _flatten_dict(v, "£" + str(counter) + "$" + new_key, sep=sep).items()
+            )
+
         elif isinstance(v, list):
             for element in v:
                 counter += 1
                 if isinstance(element, MutableMapping):
-                    items.extend(_flatten_dict(element, "£" + str(counter) + "$" + new_key, sep=sep).items())
+                    items.extend(
+                        _flatten_dict(
+                            element, "£" + str(counter) + "$" + new_key, sep=sep
+                        ).items()
+                    )
             counter = 0
-            
+
         else:
             items.append((new_key, v))
-            
+
         counter = 0
-        
+
     return dict(items)
 
 
@@ -91,7 +86,7 @@ def _validate_interninfo(file_path: str) -> bool:
     within the 'interninfo' dictionary of an XML file converted
     to a dictionary.
 
-   Args:
+    Args:
         file_path: The file path to the XML file.
 
     Returns:
@@ -185,7 +180,7 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
     return pd.DataFrame([angiver_id_row])
 
 
-def _create_levels_col(row: dict) -> int:
+def _create_levels_col(row: Any) -> int:
     """Create a 'LEVELS' column based on the length of the 'COUNTER' list in a row.
 
     Args:
@@ -193,14 +188,10 @@ def _create_levels_col(row: dict) -> int:
 
     Returns:
         The level value assigned to the row based on the 'COUNTER' list length.
-
-    Example:
-        >>> _create_levels_col({'COUNTER': ['A', 'B']})
-        2
     """
-    if isinstance(row['COUNTER'], list) and len(row['COUNTER']) > 1:
+    if isinstance(row["COUNTER"], list) and len(row["COUNTER"]) > 1:
         return 2
-    elif isinstance(row['COUNTER'], list) and len(row['COUNTER']) == 1:
+    elif isinstance(row["COUNTER"], list) and len(row["COUNTER"]) == 1:
         return 1
     else:
         return 0
@@ -208,22 +199,17 @@ def _create_levels_col(row: dict) -> int:
 
 def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     """Add a running number to the 'FELTNAVN' column.
-    
+
     Args:
         df: The input DataFrame.
 
     Returns:
         DataFrame with added running numbers.
-
-    Example:
-        >>> df = _add_lopenr(input_df)
     """
-    complex_values = set(df.loc[df['LEVELS'] > 1, 'FELTNAVN'].tolist())
-      
+    complex_values = set(df.loc[df["LEVELS"] > 1, "FELTNAVN"].tolist())
+
     if complex_values:
-        print(
-            "\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell)."
-        )
+        print("\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell).")
         print(
             "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE."
         )
@@ -232,16 +218,14 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
         )
         for var in complex_values:
             print(var)
-            
-    
-    for index, row in df.iterrows():
-        if row['LEVELS'] > 0:
-            last_counter_value = df.at[index, 'COUNTER'][-1]
-            df.at[index, 'FELTNAVN'] += '_' + last_counter_value
 
-            
-    df = df.drop(['COUNTER', 'LEVELS'], axis=1)
-    
+    for index, row in df.iterrows():
+        if row["LEVELS"] > 0:
+            last_counter_value = df.at[index, "COUNTER"][-1]
+            df.at[index, "FELTNAVN"] += "_" + last_counter_value
+
+    df = df.drop(["COUNTER", "LEVELS"], axis=1)
+
     return df
 
 
@@ -249,7 +233,7 @@ def isee_transform(
     file_path: str, mapping: Optional[dict[str, str]] = None
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
-    
+
     Transforms the XML to ISEE-format by using xmltodict to transform the XML
     to a dictionary. Traverses/scans the key/values in dictionary for lists,
     dicts and simple values.
@@ -260,11 +244,11 @@ def isee_transform(
         mapping: The mapping dictionary to map variable names in the
             'feltnavn' column. The default value is an empty dictionary
             (if mapping is not needed).
-        
+
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
         ISEE dynarev format.
-        
+
     Raises:
         ValueError: If invalid gcs-file or xml-file.
     """
@@ -279,34 +263,37 @@ def isee_transform(
 
             final_dict = _flatten_dict(input_dict)
 
-            final_df = pd.DataFrame(list(final_dict.items()), columns=['FELTNAVN', 'FELTVERDI'])
-            
+            final_df = pd.DataFrame(
+                list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
+            )
+
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
             final_df["DELREGNR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
             final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
             final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"]
 
-
-            final_df = final_df[~final_df['FELTNAVN'].str.contains('@xsi:nil')]
+            final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
 
             final_df = pd.concat(
                 [final_df, _make_angiver_row_df(file_path)], ignore_index=True
             )
-            
-            final_df['COUNTER'] = final_df['FELTNAVN'].apply(_extract_counter)
-            
-            final_df['FELTNAVN'] = final_df['FELTNAVN'].str.replace(r'£.*?\$', '', regex=True)
-            
-            final_df['LEVELS'] = final_df.apply(_create_levels_col, axis=1)
-            
+
+            final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
+
+            final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
+                r"£.*?\$", "", regex=True
+            )
+
+            final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
+
             if mapping is not None:
-                final_df["FELTNAVN"]  = final_df["FELTNAVN"].replace(mapping)
-                
+                final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
+
             final_df = _add_lopenr(final_df)
 
             return final_df
-        
+
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
         raise ValueError(error_message)
