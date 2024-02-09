@@ -300,6 +300,7 @@ def isee_transform(
 
     return pd.DataFrame()  # Should never reach this point, but need a return value
 
+
 def xml_transform(file_path: str) -> pd.DataFrame:
     """Transforms a XML to a pd.Dataframe using xmltodict.
 
@@ -310,7 +311,7 @@ def xml_transform(file_path: str) -> pd.DataFrame:
 
     Args:
         file_path: The path to the XML file.
-        
+
     Returns:
         pandas.DataFrame: A transformed DataFrame that contains all values
         from the XML
@@ -329,19 +330,17 @@ def xml_transform(file_path: str) -> pd.DataFrame:
         final_df = pd.DataFrame(
             list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
         )
-        
+
         final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
-        final_df['LEVEL'] = final_df['COUNTER'].apply(lambda x: x[::-1])
+        final_df["LEVEL"] = final_df["COUNTER"].apply(lambda x: x[::-1])
         final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
-                r"£.*?\$", "", regex=True
-            )
-            
+            r"£.*?\$", "", regex=True
+        )
+
         final_df = final_df.drop(["COUNTER"], axis=1)
-        
+
         return final_df
-    
+
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
         raise ValueError(error_message)
-
-    return pd.DataFrame()  # Should never reach this point, but need a return value
