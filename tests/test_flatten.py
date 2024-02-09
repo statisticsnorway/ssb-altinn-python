@@ -12,6 +12,7 @@ def test_isee_transform() -> None:
 
     assert len(df) == 61
 
+
 def test_xml_transform() -> None:
     xml_file = Path(__file__).parent / "data" / "form_373a35bb8808.xml"
     df = xml_transform(str(xml_file))
