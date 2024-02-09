@@ -222,7 +222,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     for index, row in df.iterrows():
         if row["LEVELS"] > 0:
             last_counter_value = df.at[index, "COUNTER"][-1]
-            df.at[index, "FELTNAVN"] += "_" + last_counter_value
+            df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
 
     df = df.drop(["COUNTER", "LEVELS"], axis=1)
 
