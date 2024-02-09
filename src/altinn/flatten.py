@@ -222,7 +222,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     for index, row in df.iterrows():
         if row["LEVELS"] > 0:
             last_counter_value = df.at[index, "COUNTER"][-1]
-            df.at[index, "FELTNAVN"] += "_" + last_counter_value
+            df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
 
     df = df.drop(["COUNTER", "LEVELS"], axis=1)
 
@@ -299,3 +299,48 @@ def isee_transform(
         raise ValueError(error_message)
 
     return pd.DataFrame()  # Should never reach this point, but need a return value
+
+
+def xml_transform(file_path: str) -> pd.DataFrame:
+    """Transforms a XML to a pd.Dataframe using xmltodict.
+
+    Transforms the XML to a dataframe, using xmltodict to transform the XML
+    to a dictionary. Traverses/scans the key/values in dictionary for lists,
+    dicts and simple values.
+    Stores the results in a list of dictionaries, that converts to a DataFrame
+
+    Args:
+        file_path: The path to the XML file.
+
+    Returns:
+        pandas.DataFrame: A transformed DataFrame that contains all values
+        from the XML
+
+    Raises:
+        ValueError: If invalid gcs-file or xml-file.
+    """
+    if utils.is_valid_xml(file_path):
+
+        xml_dict = _read_single_xml_to_dict(file_path)
+        root_element = next(iter(xml_dict.keys()))
+        input_dict = xml_dict[root_element]
+
+        final_dict = _flatten_dict(input_dict)
+
+        final_df = pd.DataFrame(
+            list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
+        )
+
+        final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
+        final_df["LEVEL"] = final_df["COUNTER"].apply(lambda x: x[::-1])
+        final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
+            r"£.*?\$", "", regex=True
+        )
+
+        final_df = final_df.drop(["COUNTER"], axis=1)
+
+        return final_df
+
+    else:
+        error_message = f"File is not a valid XML-file: {file_path}"
+        raise ValueError(error_message)

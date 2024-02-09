@@ -76,6 +76,29 @@ The resulting object is a Pandas Dataframe with the following columns:
 
 This dataframe can be written to csv and uploaded to the ISEE Dynarev database.
 
+### Transform all XML-data to a pd.DataFrame
+
+If you want to transform an Altinn3 xml-file to a Pandas Dataframe, without the extra ISEE-information, and keep all information (not just ‘SkjemaData), you can use the `xml_transform`-function.
+
+```python
+from altinn import xml_transform
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
+
+xml_transform(file)
+```
+
+The resulting object is a Pandas Dataframe with the following columns:
+- `FELTNAVN`
+- `FELTVERDI`
+- `LEVEL`
+
+FELTNAVN: the name of the xml-tags concatenated together for each level in the XML.
+FELTVERDI: the value of the xml-tag.
+LEVEL: A list with information about the concatenation level. If one or more of the values is greater than 1, it means there are repeating values in the tag.
+
+
+
 ### Get information about a file
 
 ```python
