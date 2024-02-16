@@ -8,6 +8,7 @@ of Altinn3. This is done in a separate file.
 """
 
 import re
+import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
 from typing import Any
 from typing import Optional
@@ -344,3 +345,42 @@ def xml_transform(file_path: str) -> pd.DataFrame:
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
         raise ValueError(error_message)
+
+
+def create_isee_filename(file_path: str) -> str | None:
+    """Creates a filename based on the contents of an XML file and the provided file path.
+
+    Args:
+        file_path: The path to the XML file.
+
+    Returns:
+        The generated filename if successful, otherwise None.
+    """
+    # Read XML-file
+    if utils.is_gcs(file_path):
+        fs = FileClient.get_gcs_file_system()
+        with fs.open(file_path, mode="r") as f:
+            xml_content = f.read()
+
+    else:
+        with open(file_path) as f:
+            xml_content = f.read()
+
+    # Parse the XML content
+    root = ET.fromstring(xml_content)
+
+    # Find the value of raNummer
+    ra_nummer_element = root.find(".//InternInfo/raNummer")
+    if ra_nummer_element is not None:
+        ra_nummer_value = ra_nummer_element.text
+
+    # Find angiver_id in filepath
+    start_index = file_path.find("/form_") + len("/form_")
+    end_index = file_path.find(".xml", start_index)
+    if start_index != -1 and end_index != -1:
+        angiver_id = file_path[start_index:end_index]
+
+    # Create the filename
+    filename = f"{ra_nummer_value}A3_{angiver_id}.csv"
+
+    return filename
