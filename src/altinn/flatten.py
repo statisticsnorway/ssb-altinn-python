@@ -374,11 +374,8 @@ def create_isee_filename(file_path: str) -> str | None:
     if ra_nummer_element is not None:
         ra_nummer_value = ra_nummer_element.text
 
-    # Find angiver_id in filepath
-    start_index = file_path.find("/form_") + len("/form_")
-    end_index = file_path.find(".xml", start_index)
-    if start_index != -1 and end_index != -1:
-        angiver_id = file_path[start_index:end_index]
+    # find angiver_id
+    angiver_id = _extract_angiver_id(file_path)
 
     # Create the filename
     filename = f"{ra_nummer_value}A3_{angiver_id}.csv"
