@@ -97,6 +97,17 @@ FELTNAVN: the name of the xml-tags concatenated together for each level in the X
 FELTVERDI: the value of the xml-tag.
 LEVEL: A list with information about the concatenation level. If one or more of the values is greater than 1, it means there are repeating values in the tag.
 
+### Create filename for use in ISEE
+If you need to transfer ISEE-data to the On-Prem-platform, the .csv-filename need a spesific format. The function `create_isee_filename` can create this filename from the filepath and contents of a XML-file.
+
+```python
+from altinn import create_isee_filename
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
+
+create_isee_filename(file)
+```
+In the example above the output will be `RA-0595A3_460784f978a2.csv`. This can be used to build a new filepath to where you need to store the result after the XML is transformed to ISEE-format.
 
 
 ### Get information about a file
