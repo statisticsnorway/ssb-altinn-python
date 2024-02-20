@@ -292,8 +292,16 @@ def isee_transform(
                 final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
 
             final_df = _add_lopenr(final_df)
-            
-            columns_order = ['SKJEMA_ID', 'DELREG_NR', 'IDENT_NR', 'ENHETS_TYPE', 'FELTNAVN', 'FELTVERDI', 'VERSION_NR']
+
+            columns_order = [
+                "SKJEMA_ID",
+                "DELREG_NR",
+                "IDENT_NR",
+                "ENHETS_TYPE",
+                "FELTNAVN",
+                "FELTVERDI",
+                "VERSION_NR",
+            ]
 
             final_df = final_df[columns_order]
 
@@ -343,13 +351,8 @@ def xml_transform(file_path: str) -> pd.DataFrame:
         )
 
         final_df = final_df.drop(["COUNTER"], axis=1)
-        
-        columns_order = ['SKJEMA_ID', 'DELREG_NR', 'IDENT_NR', 'ENHETS_TYPE', 'FELTNAVN', 'FELTVERDI', 'VERSION_NR']
 
-        final_df = final_df[columns_order]
-        
         return final_df
-
 
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
