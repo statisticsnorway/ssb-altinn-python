@@ -173,7 +173,7 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         "FELTVERDI": _extract_angiver_id(file_path),
         "IDENT_NR": xml_dict[root_element]["InternInfo"]["enhetsIdent"],
         "VERSION_NR": _extract_angiver_id(file_path),
-        "DELREGNR": xml_dict[root_element]["InternInfo"]["delregNr"],
+        "DELREG_NR": xml_dict[root_element]["InternInfo"]["delregNr"],
         "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
         "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"],
     }
@@ -270,7 +270,7 @@ def isee_transform(
 
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
-            final_df["DELREGNR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
+            final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
             final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
             final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"]
 
@@ -292,6 +292,18 @@ def isee_transform(
                 final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
 
             final_df = _add_lopenr(final_df)
+
+            columns_order = [
+                "SKJEMA_ID",
+                "DELREG_NR",
+                "IDENT_NR",
+                "ENHETS_TYPE",
+                "FELTNAVN",
+                "FELTVERDI",
+                "VERSION_NR",
+            ]
+
+            final_df = final_df[columns_order]
 
             return final_df
 
