@@ -96,7 +96,7 @@ def _transform_dict_checkbox_var(
     """
     value = dictionary.pop(old_key, None)
 
-    values = utils.split_string(value)
+    values = utils._split_string(value)
     for value in values:
         dictionary[value] = new_value
 
