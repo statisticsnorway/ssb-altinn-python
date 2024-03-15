@@ -79,22 +79,24 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
     return dict(items)
 
 
-def _transform_dict_checkbox_var(dictionary:dict, old_key:str, new_value:str="1")->dict:
+def _transform_dict_checkbox_var(
+    dictionary: dict, old_key: str, new_value: str = "1"
+) -> dict:
     """transform_dict_code_vars.
-    
+
     Transform a dictionary by removing a key and using its value as a new key with a new value.
 
     Args:
         dictionary: The dictionary to be transformed.
         old_key: The key to remove from the dictionary.
+        new_value: Optional new value to add, default is 1 as str.
 
     Returns:
         dict: The transformed dictionary.
     """
     value = dictionary.pop(old_key, None)
-    
+
     values = utils.split_string(value)
-    print(values)
     for value in values:
         dictionary[value] = new_value
 
@@ -253,7 +255,9 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def isee_transform(
-    file_path: str, mapping: Optional[dict[str, str]] = None, checkbox_vars:list[str] = None,
+    file_path: str,
+    mapping: Optional[dict[str, str]] = None,
+    checkbox_vars: list[str] = None,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -267,7 +271,7 @@ def isee_transform(
         mapping: The mapping dictionary to map variable names in the
             'feltnavn' column. The default value is an empty dictionary
             (if mapping is not needed).
-        code_vars: Optional list of str for elements from xml containing KLASS codes.
+        checkbox_vars: Optional list of str for elements from xml containing KLASS codes.
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -286,10 +290,10 @@ def isee_transform(
             input_dict = xml_dict[root_element]["SkjemaData"]
 
             final_dict = _flatten_dict(input_dict)
-            
+
             if checkbox_vars is not None:
                 for checkbox_var in checkbox_vars:
-                    final_dict = _transform_dict_checkbox_var(final_dict,checkbox_var)
+                    final_dict = _transform_dict_checkbox_var(final_dict, checkbox_var)
 
             final_df = pd.DataFrame(
                 list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]

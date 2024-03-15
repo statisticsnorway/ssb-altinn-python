@@ -48,9 +48,8 @@ def is_valid_xml(file_path: str) -> bool:
             return False
 
 
-def _split_string(input_string:str):
-    """
-    Split a string into a list of strings using ',' as the separator.
+def _split_string(input_string: str):
+    """Split a string into a list of strings using ',' as the separator.
 
     Args:
         input_string: The input string to be split.
@@ -58,4 +57,4 @@ def _split_string(input_string:str):
     Returns:
         list: A list of split strings.
     """
-    return input_string.split(',')
+    return input_string.split(",")
