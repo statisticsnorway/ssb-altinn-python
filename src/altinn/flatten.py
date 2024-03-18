@@ -286,6 +286,8 @@ def isee_transform(
                 r"£.*?\$", "", regex=True
             )
 
+            final_df['FELTVERDI'] = final_df['FELTVERDI'].str.replace('\n', ' ')
+            
             final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
 
             if mapping is not None:
