@@ -81,7 +81,7 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
 
 def _transform_dict_checkbox_var(
     dictionary: dict[str, str], old_key: str, new_value: str = "1"
-) -> dict:
+) -> dict[str, str]:
     """transform_dict_code_vars.
 
     Transform a dictionary by removing a key and using its value as a new key with a new value.
@@ -96,7 +96,7 @@ def _transform_dict_checkbox_var(
     """
     value = dictionary.pop(old_key, None)
 
-    values = utils._split_string(value)
+    values = utils._split_string(value)  # type: ignore
     for value in values:
         dictionary[value] = new_value
 
@@ -257,7 +257,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 def isee_transform(
     file_path: str,
     mapping: Optional[dict[str, str]] = None,
-    checkbox_vars: list[str] = None,
+    checkbox_vars: Optional[list[str]] = None,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -282,8 +282,6 @@ def isee_transform(
     """
     if utils.is_valid_xml(file_path):
         if _validate_interninfo(file_path):
-            if mapping is None:
-                mapping = {}
 
             xml_dict = _read_single_xml_to_dict(file_path)
             root_element = next(iter(xml_dict.keys()))
