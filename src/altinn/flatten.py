@@ -175,7 +175,7 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         "VERSION_NR": _extract_angiver_id(file_path),
         "DELREG_NR": xml_dict[root_element]["InternInfo"]["delregNr"],
         "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
-        "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"]+'A3',
+        "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"] + "A3",
     }
 
     return pd.DataFrame([angiver_id_row])
@@ -272,7 +272,9 @@ def isee_transform(
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
             final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
             final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
-            final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"]+'A3'
+            final_df["SKJEMA_ID"] = (
+                xml_dict[root_element]["InternInfo"]["raNummer"] + "A3"
+            )
 
             final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
 
@@ -286,8 +288,8 @@ def isee_transform(
                 r"£.*?\$", "", regex=True
             )
 
-            final_df['FELTVERDI'] = final_df['FELTVERDI'].str.replace('\n', ' ')
-            
+            final_df["FELTVERDI"] = final_df["FELTVERDI"].str.replace("\n", " ")
+
             final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
 
             if mapping is not None:
