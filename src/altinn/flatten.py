@@ -80,7 +80,7 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
 
 
 def _transform_dict_checkbox_var(
-    dictionary: dict, old_key: str, new_value: str = "1"
+    dictionary: dict[str, str], old_key: str, new_value: str = "1"
 ) -> dict:
     """transform_dict_code_vars.
 
