@@ -80,7 +80,10 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
 
 
 def _transform_dict_checkbox_var(
-    dictionary: dict[str, str], old_key: str, new_value: str = "1"
+    dictionary: dict[str, str], 
+    old_key: str, 
+    new_value: str = "1", 
+    unique_code: bool=False,
 ) -> dict[str, str]:
     """transform_dict_code_vars.
 
@@ -94,11 +97,15 @@ def _transform_dict_checkbox_var(
     Returns:
         dict: The transformed dictionary.
     """
-    value = dictionary.pop(old_key, None)
+    if old_key in dictionary.keys:
+        value = dictionary.pop(old_key, None)
 
-    values = utils._split_string(value)  # type: ignore
-    for value in values:
-        dictionary[value] = new_value
+        values = utils._split_string(value)  # type: ignore
+        for value in values:
+            if unique_code is False:
+                dictionary[old_key+value] = new_value
+            else:
+                dictionary[value] = new_value
 
     return dictionary
 
@@ -258,6 +265,7 @@ def isee_transform(
     file_path: str,
     mapping: Optional[dict[str, str]] = None,
     checkbox_vars: Optional[list[str]] = None,
+    unique_code: bool=False,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -291,7 +299,7 @@ def isee_transform(
 
             if checkbox_vars is not None:
                 for checkbox_var in checkbox_vars:
-                    final_dict = _transform_dict_checkbox_var(final_dict, checkbox_var)
+                    final_dict = _transform_dict_checkbox_var(final_dict, checkbox_var, unique_code)
 
             final_df = pd.DataFrame(
                 list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
