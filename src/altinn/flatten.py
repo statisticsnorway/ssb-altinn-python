@@ -80,10 +80,10 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
 
 
 def _transform_dict_checkbox_var(
-    dictionary: dict[str, str], 
-    old_key: str, 
-    new_value: str = "1", 
-    unique_code: bool=False,
+    dictionary: dict[str, str],
+    old_key: str,
+    unique_code: bool = False,
+    new_value: str = "1",
 ) -> dict[str, str]:
     """transform_dict_code_vars.
 
@@ -92,18 +92,19 @@ def _transform_dict_checkbox_var(
     Args:
         dictionary: The dictionary to be transformed.
         old_key: The key to remove from the dictionary.
+        unique_code: Bool for if you are using unique codes from Klass or not.
         new_value: Optional new value to add, default is 1 as str.
 
     Returns:
         dict: The transformed dictionary.
     """
-    if old_key in dictionary.keys:
+    if old_key in dictionary:
         value = dictionary.pop(old_key, None)
 
         values = utils._split_string(value)  # type: ignore
         for value in values:
             if unique_code is False:
-                dictionary[old_key+value] = new_value
+                dictionary[old_key + value] = new_value
             else:
                 dictionary[value] = new_value
 
@@ -265,7 +266,7 @@ def isee_transform(
     file_path: str,
     mapping: Optional[dict[str, str]] = None,
     checkbox_vars: Optional[list[str]] = None,
-    unique_code: bool=False,
+    unique_code: bool = False,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -280,6 +281,7 @@ def isee_transform(
             'feltnavn' column. The default value is an empty dictionary
             (if mapping is not needed).
         checkbox_vars: Optional list of str for elements from xml containing KLASS codes.
+        unique_code: Bool for if you are using unique codes from Klass or not.
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -299,7 +301,9 @@ def isee_transform(
 
             if checkbox_vars is not None:
                 for checkbox_var in checkbox_vars:
-                    final_dict = _transform_dict_checkbox_var(final_dict, checkbox_var, unique_code)
+                    final_dict = _transform_dict_checkbox_var(
+                        final_dict, checkbox_var, unique_code
+                    )
 
             final_df = pd.DataFrame(
                 list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
