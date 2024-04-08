@@ -2,7 +2,6 @@
 
 import os
 from typing import Any
-from typing import Optional
 from xml.etree.ElementTree import Element
 
 import pandas as pd
@@ -39,7 +38,7 @@ class ParseSingleXml:
         self,
         element: Element,
         column_counter: int = 1,
-        data: Optional[dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Recursively traverse an XML element and extract data.
 
