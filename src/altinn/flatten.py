@@ -233,7 +233,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 def isee_transform(
     file_path: str, 
     mapping: Optional[dict[str, str]] = None,
-    tag_list: Optional[list[str]] = ['SkjemaData']
+    tag_list: Optional[list[str]] = None
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -262,6 +262,9 @@ def isee_transform(
             if mapping is None:
                 mapping = {}
 
+            if tag_list is None:
+                tag_list = ['SkjemaData']
+                
             xml_dict = _read_single_xml_to_dict(file_path)
             root_element = next(iter(xml_dict.keys()))
             
