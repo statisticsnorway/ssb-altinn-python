@@ -54,6 +54,24 @@ mapping = {'kontAmbulForeDispJaNei':'ISEE_VAR1',
 
 isee_transform(file, mapping)
 ```
+
+If you need to flatten more than 'SkjemaData' from the XML, you can make a list of the tags in the XML you need to flatten, and add this list as an argument (tag_list) when running the function isee_transform(file, taglist=taglist). The default value is 'SkjemaData', so if you only need to flatten this, its not needed to pass the argument tag_list.
+
+```python
+from altinn import isee_transform
+
+file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_460784f978a2_ebc7af7e-4ebe-4883-b844-66ee6292a93a/form_460784f978a2.xml"
+
+mapping = {'kontAmbulForeDispJaNei':'ISEE_VAR1',
+           'kontAmbulForeDispAnt':'ISEE_VAR2',
+           'kontAmbulForeDriftAnt':'ISEE_VAR3',
+           'kontaktPersonNavn'; 'ISEE_KONTAKTPERSON',}
+
+tags = ['SkjemaData', 'Kontakt']
+
+isee_transform(file, mapping, tag_list=tags)
+```
+
 The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE.
 
 The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
