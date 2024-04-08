@@ -11,7 +11,6 @@ import re
 import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
 from typing import Any
-from typing import Optional
 
 import pandas as pd
 import xmltodict
@@ -231,7 +230,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def isee_transform(
-    file_path: str, mapping: Optional[dict[str, str]] = None
+    file_path: str, mapping: dict[str, str] | None = None
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
