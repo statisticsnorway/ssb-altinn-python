@@ -231,7 +231,9 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def isee_transform(
-    file_path: str, mapping: Optional[dict[str, str]] = None
+    file_path: str, 
+    mapping: Optional[dict[str, str]] = None,
+    tag_list: Optional[list[str]] = ['SkjemaData']
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -245,6 +247,8 @@ def isee_transform(
         mapping: The mapping dictionary to map variable names in the
             'feltnavn' column. The default value is an empty dictionary
             (if mapping is not needed).
+        tag_list: A list containing the tags in the XML that will be flatten
+            The default value is ['SkjemaData']
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -260,13 +264,17 @@ def isee_transform(
 
             xml_dict = _read_single_xml_to_dict(file_path)
             root_element = next(iter(xml_dict.keys()))
-            input_dict = xml_dict[root_element]["SkjemaData"]
-
-            final_dict = _flatten_dict(input_dict)
-
-            final_df = pd.DataFrame(
-                list(final_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
-            )
+            
+            final_df = pd.DataFrame()
+            
+            for tag in tag_list:
+                input_dict = xml_dict[root_element][tag]
+                tag_dict = _flatten_dict(input_dict)
+                tag_df = pd.DataFrame(
+                list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
+                )
+                
+                final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
 
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
