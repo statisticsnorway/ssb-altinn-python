@@ -30,13 +30,13 @@ jobs:
 
       - name: Install Poetry
         run: |
-          pipx install --pip-args "-c .github/workflows/constraints.txt" poetry
+          pipx install --pip-args "-c ${{ github.workspace }}/.github/workflows/constraints.txt" poetry
           poetry --version
 
       - name: Set up Python
-        uses: actions/setup-python@v5.0.0
+        uses: actions/setup-python@v5.1.0
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "poetry"
 
       - name: Install dependencies
@@ -60,7 +60,7 @@ jobs:
     needs: build
     steps:
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Deploy to GitHub Pages
         id: deployment
