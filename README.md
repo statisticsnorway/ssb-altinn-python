@@ -41,6 +41,7 @@ file = "gs://ssb-prod-dapla-felles-data-delt/altinn3/RA-0595/2023/2/6/810409282_
 isee_transform(file)
 ```
 
+#### Mapping the FELTNAVN-column
 If you want to recode/map names in the FELTNAVN-column, you can use a dictionary with the original names from the xml as keys, and the new names as values. And then pass the dictionary as an argument when running the function isee_transform(file, mapping).
 
 ```python
@@ -55,6 +56,7 @@ mapping = {'kontAmbulForeDispJaNei':'ISEE_VAR1',
 isee_transform(file, mapping)
 ```
 
+#### Flatten more tags than SkjemaData
 If you need to flatten more than 'SkjemaData' from the XML, you can make a list of the tags in the XML you need to flatten, and add this list as an argument (tag_list) when running the function isee_transform(file, taglist=taglist). The default value is 'SkjemaData', so if you only need to flatten this, its not needed to pass the argument tag_list.
 
 ```python
@@ -71,6 +73,44 @@ tags = ['SkjemaData', 'Kontakt']
 
 isee_transform(file, mapping, tag_list=tags)
 ```
+
+#### Flatten checkboxes
+Altinn 3 checkboxes comes as a string value seperated by ",". To get this into oracle, the value must be extracted and pivoted to unique rows. Listing variables from altinn 3 xml file that are checkboxes in checkbox_vars will make each value to a unique row. Checkboxes can use unique codes from KLASS or be 1:N. If youre checkbox codes are unique, you should also set unique_code to True.
+When we then transform the xml file to isee format, we will end up with more variables than we begun with. This extra potential variables must then be included in the mapping so they have the right name when loaded into oracle.
+
+```python
+
+from altinn import isee_transform
+
+file = "your_xml_file.xml"
+
+mapping = {
+    "valueCounted":"var1",
+    "01":"SESONG",
+    "02":"MARKEDET",
+}
+
+checkboxList = [
+    "checkBoxVar"
+]
+
+isee_transform(file=file,mapping=mapping,checkbox_vars=checkboxList,unique_code=True)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE.
 

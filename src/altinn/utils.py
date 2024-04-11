@@ -47,10 +47,13 @@ def is_valid_xml(file_path: str) -> bool:
         except (ParseError, OSError):
             return False
 
+
 def _split_string(input_string: str) -> list[str]:
     """Split a string into a list of strings using ',' as the separator.
+
     Args:
         input_string: The input string to be split.
+
     Returns:
         list: A list of split strings.
     """
