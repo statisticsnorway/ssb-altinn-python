@@ -75,7 +75,7 @@ isee_transform(file, mapping, tag_list=tags)
 ```
 
 #### Flatten checkboxes
-Altinn 3 checkboxes comes as a string value seperated by ",". To get this into oracle, the value must be extracted and pivoted to unique rows. Listing variables from altinn 3 xml file that are checkboxes in checkbox_vars will make each value to a unique row. 
+Altinn 3 checkboxes comes as a string value seperated by ",". To get this into oracle, the value must be extracted and pivoted to unique rows. Listing variables from altinn 3 xml file that are checkboxes in checkbox_vars will make each value to a unique row.
 Checkboxes can use unique codes from KLASS or be 1:N. If your checkbox codes are unique, you should also set unique_code to True.
 When we then transform the xml file to isee format, we will end up with more variables than we begun with. This extra potential variables must then be included in the mapping so they have the right name when loaded into oracle.
 
