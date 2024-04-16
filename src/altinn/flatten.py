@@ -229,10 +229,61 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _transform_checkbox_var(
+    df: pd.DataFrame,
+    checkbox_var: str,
+    unique_code: bool = False,
+    new_value: str = "1",
+) -> pd.DataFrame:
+    """transform_dict_code_vars.
+
+    Transform a dictionary by removing a key and using its value as a new key with a new value.
+
+    Args:
+        df: The DataFrame to be transformed.
+        checkbox_var: The value to remove from the DataFrame and flatten into seperate rows.
+        unique_code: Bool for if you are using unique codes from Klass or not.
+        new_value: Optional new value to add, default is 1 as str.
+
+    Returns:
+        df: The transformed DataFrame.
+    """
+    if checkbox_var in df["FELTNAVN"].values:
+
+        checkbox_df = df[df["FELTNAVN"] == checkbox_var].copy()
+
+        df = df[df["FELTNAVN"] != checkbox_var]
+
+        for _, row in checkbox_df.iterrows():
+
+            value = row["FELTVERDI"]
+            values = utils._split_string(value)
+
+            for value in values:
+
+                new_row = row.copy()
+
+                if unique_code is False:
+                    new_row["FELTNAVN"] = checkbox_var + value
+                    new_row["FELTVERDI"] = new_value
+                else:
+                    new_row["FELTNAVN"] = value
+                    new_row["FELTVERDI"] = new_value
+
+                df = pd.concat(
+                    [df, pd.DataFrame([new_row]).reset_index(drop=True)],
+                    ignore_index=True,
+                )
+
+    return df
+
+
 def isee_transform(
     file_path: str,
     mapping: dict[str, str] | None = None,
     tag_list: list[str] | None = None,
+    checkbox_vars: list[str] | None = None,
+    unique_code: bool = False,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -248,6 +299,8 @@ def isee_transform(
             (if mapping is not needed).
         tag_list: A list containing the tags in the XML that will be flatten
             The default value is ['SkjemaData']
+        checkbox_vars: Optional list of str for elements from xml containing KLASS codes.
+        unique_code: Bool for if you are using unique codes from Klass or not.
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -277,6 +330,12 @@ def isee_transform(
                 )
 
                 final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
+
+            if checkbox_vars is not None:
+                for checkbox_var in checkbox_vars:
+                    final_df = _transform_checkbox_var(
+                        final_df, checkbox_var, unique_code
+                    )
 
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
