@@ -75,44 +75,32 @@ isee_transform(file, mapping, tag_list=tags)
 ```
 
 #### Flatten checkboxes
-Altinn 3 checkboxes comes as a string value seperated by ",". To get this into oracle, the value must be extracted and pivoted to unique rows. Listing variables from altinn 3 xml file that are checkboxes in checkbox_vars will make each value to a unique row. Checkboxes can use unique codes from KLASS or be 1:N. If youre checkbox codes are unique, you should also set unique_code to True.
+Altinn 3 checkboxes comes as a string value seperated by ",". To get this into oracle, the value must be extracted and pivoted to unique rows. Listing variables from altinn 3 xml file that are checkboxes in checkbox_vars will make each value to a unique row. 
+Checkboxes can use unique codes from KLASS or be 1:N. If your checkbox codes are unique, you should also set unique_code to True.
 When we then transform the xml file to isee format, we will end up with more variables than we begun with. This extra potential variables must then be included in the mapping so they have the right name when loaded into oracle.
 
 ```python
 
 from altinn import isee_transform
 
-file = "your_xml_file.xml"
+file = 'gs://ra0187-01-altinn-data-staging-c629-ssb-altinn/2024/4/11/7d5b52259b89_de4a24aa-4948-48d8-b2e4-a0f2160a0bd0/form_7d5b52259b89.xml'
 
 mapping = {
-    "valueCounted":"var1",
-    "01":"SESONG",
-    "02":"MARKEDET",
+    "storOkningOmsAarsak31":"ISEE_storOkningOmsAarsak31",
+    "storOkningOmsAarsak33":"ISEE_storOkningOmsAarsak33",
+    "omsForrigePerPrefill":"ISEE_omsForrigePerPrefill",
 }
 
-checkboxList = [
-    "checkBoxVar"
-]
+checkboxList = ["storOkningOmsAarsak"]
 
-isee_transform(file=file,mapping=mapping,checkbox_vars=checkboxList,unique_code=True)
+isee_transform(file=file,mapping=mapping,checkbox_vars=checkboxList,unique_code=False)
 
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE.
+These warnings will not be visible in 'Kildomaten' unless you check the logs, so it's recommended to test outside of 'Kildomaten' before ypu put it in production.
+
 
 The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
 - 'enhetsIdent'
@@ -195,7 +183,7 @@ form.validate()
 
 ### Parse xml-file
 
-If you want to transform an Altinn3 xml-file to a Pandas Dataframe, you can use the ParseSingleXml-class.
+If you want to transform an Altinn3 xml-file to a Pandas Dataframe, you can use the ParseSingleXml-class. This will not handle complex structures of the XML.
 
 ```python
 from altinn import ParseSingleXml
