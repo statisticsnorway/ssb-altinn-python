@@ -331,12 +331,6 @@ def isee_transform(
 
                 final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
 
-            if checkbox_vars is not None:
-                for checkbox_var in checkbox_vars:
-                    final_df = _transform_checkbox_var(
-                        final_df, checkbox_var, unique_code
-                    )
-
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
             final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
@@ -360,6 +354,12 @@ def isee_transform(
             final_df["FELTVERDI"] = final_df["FELTVERDI"].str.replace("\n", " ")
 
             final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
+
+            if checkbox_vars is not None:
+                for checkbox_var in checkbox_vars:
+                    final_df = _transform_checkbox_var(
+                        final_df, checkbox_var, unique_code
+                    )
 
             if mapping is not None:
                 final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
