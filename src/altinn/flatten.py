@@ -276,6 +276,75 @@ def _transform_checkbox_var(
 
     return df
 
+def _convert_to_oslo_time(utc_time_str: str) -> str:
+    """Converts a UTC time string with high-precision microseconds to a time string
+    in the 'Europe/Oslo' timezone, truncating microseconds to six digits if necessary.
+
+    This function handles ISO 8601 formatted strings that may end with 'Z' (indicative of UTC).
+    It truncates microseconds to the first six digits for compatibility with Python's datetime parsing,
+    adjusts for the timezone, and handles daylight saving changes applicable to Oslo.
+
+    Args:
+        utc_time_str: The UTC time string in ISO 8601 format, potentially ending with 'Z'.
+    
+    Returns:
+        The time string converted to the 'Europe/Oslo' timezone in ISO 8601 format.
+    """
+    # Handle 'Z' and truncate microseconds to six digits if necessary
+    if utc_time_str.endswith('Z'):
+        utc_time_str = utc_time_str[:-1] + '+00:00'  # Convert 'Z' to '+00:00' for UTC
+
+    # Truncate to six decimal places for seconds
+    dot_index = utc_time_str.find('.')
+    if dot_index != -1:
+        # Ensure only six digits in microseconds part, plus handle remainder of string format
+        utc_time_str = utc_time_str[:dot_index+7] + utc_time_str[utc_time_str.rfind('+'):]
+
+    # Convert to datetime with timezone aware
+    utc_datetime = datetime.fromisoformat(utc_time_str)
+    oslo_timezone = pytz.timezone('Europe/Oslo')
+    oslo_datetime = utc_datetime.astimezone(oslo_timezone)
+
+    return oslo_datetime.isoformat()
+
+def _read_json_meta(file_path: str) -> Optional[Any]:
+    """
+    Reads a JSON file, converting the file path from an XML file path to a JSON file path
+    by replacing 'form_' with 'meta_' and '.xml' with '.json'.
+
+    Args:
+    - file_path: The original XML file path.
+
+    Returns:
+    - The content of the JSON file as a pd.DataFrame(), or None if the file does not exist.
+    """
+    
+    json_file_path = file_path.replace('form_', 'meta_').replace('.xml', '.json')
+       
+    fs = FileClient.get_gcs_file_system()
+
+    if fs.exists(json_file_path):
+        try:
+            with fs.open(json_file_path, 'r', encoding='utf-8') as file:
+                data = json.load(file) 
+            
+        except json.JSONDecodeError as e:
+            print(f"Error reading JSON file: {e}")   
+            
+            
+        rows = []
+        
+        for key, value in data.items():
+                rows.append({'FELTNAVN': key.upper(), 'FELTVERDI': value})
+        
+        df = pd.DataFrame(rows)
+        
+        df.loc[df['FELTNAVN'] == 'ALTINNTIDSPUNKTLEVERT', 'FELTVERDI'] = df.loc[df['FELTNAVN'] == 'ALTINNTIDSPUNKTLEVERT', 'FELTVERDI'].apply(_convert_to_oslo_time)
+        print(df)
+        return df
+            
+    else:
+        return None
 
 def isee_transform(
     file_path: str,
@@ -329,6 +398,10 @@ def isee_transform(
                 )
 
                 final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
+                
+                
+            meta_df = _read_json_meta(file)
+                
                 
             final_df = pd.concat(
                 [final_df, _make_angiver_row_df(file_path)], ignore_index=True
