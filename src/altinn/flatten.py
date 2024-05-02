@@ -14,9 +14,9 @@ import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
-import pytz
 import xmltodict
 from dapla import FileClient
 
@@ -149,9 +149,10 @@ def _extract_angiver_id(file_path: str) -> str | None:
     Returns:
         String with extracted_text (angiver_id)
     """
-    start_index = file_path.find("/form_") + len("/form_")
+    FORM_STRING = "/form_"
+    start_index = file_path.find(FORM_STRING) + len(FORM_STRING)
     end_index = file_path.find(".xml", start_index)
-    if start_index > len("/form_") - 1 and end_index != -1:
+    if start_index > len(FORM_STRING) - 1 and end_index != -1:
         extracted_text = file_path[start_index:end_index]
         return extracted_text
     else:
@@ -309,7 +310,7 @@ def _convert_to_oslo_time(utc_time_str: str) -> str:
 
     # Convert to datetime with timezone aware
     utc_datetime = datetime.fromisoformat(utc_time_str)
-    oslo_timezone = pytz.timezone("Europe/Oslo")
+    oslo_timezone = ZoneInfo("Europe/Oslo")
     oslo_datetime = utc_datetime.astimezone(oslo_timezone)
 
     return oslo_datetime.isoformat()
