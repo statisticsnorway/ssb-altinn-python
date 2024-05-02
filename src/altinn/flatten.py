@@ -7,10 +7,14 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
+import json
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import xmltodict
@@ -98,9 +102,10 @@ def _validate_interninfo(file_path: str) -> bool:
 
     required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
 
-    missing_keys = [
-        key for key in required_keys if key not in xml_dict[root_element]["InternInfo"]
-    ]
+    # Safely accessing 'InternInfo'
+    intern_info = xml_dict[root_element].get("InternInfo", {})
+
+    missing_keys = [key for key in required_keys if key not in intern_info]
 
     if missing_keys:
         print("The following required keys are missing in ['InternInfo']:")
@@ -144,9 +149,10 @@ def _extract_angiver_id(file_path: str) -> str | None:
     Returns:
         String with extracted_text (angiver_id)
     """
-    start_index = file_path.find("/form_") + len("/form_")
+    FORM_STRING = "/form_"
+    start_index = file_path.find(FORM_STRING) + len(FORM_STRING)
     end_index = file_path.find(".xml", start_index)
-    if start_index != -1 and end_index != -1:
+    if start_index > len(FORM_STRING) - 1 and end_index != -1:
         extracted_text = file_path[start_index:end_index]
         return extracted_text
     else:
@@ -165,16 +171,9 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
 
     """
-    xml_dict = _read_single_xml_to_dict(file_path)
-    root_element = next(iter(xml_dict.keys()))
     angiver_id_row = {
         "FELTNAVN": "ANGIVER_ID",
         "FELTVERDI": _extract_angiver_id(file_path),
-        "IDENT_NR": xml_dict[root_element]["InternInfo"]["enhetsIdent"],
-        "VERSION_NR": _extract_angiver_id(file_path),
-        "DELREG_NR": xml_dict[root_element]["InternInfo"]["delregNr"],
-        "ENHETS_TYPE": xml_dict[root_element]["InternInfo"]["enhetsType"],
-        "SKJEMA_ID": xml_dict[root_element]["InternInfo"]["raNummer"] + "A3",
     }
 
     return pd.DataFrame([angiver_id_row])
@@ -189,9 +188,12 @@ def _create_levels_col(row: Any) -> int:
     Returns:
         The level value assigned to the row based on the 'COUNTER' list length.
     """
-    if isinstance(row["COUNTER"], list) and len(row["COUNTER"]) > 1:
+    # Safely access 'COUNTER' with a default empty list if the key is missing
+    counter = row.get("COUNTER", [])
+
+    if isinstance(counter, list) and len(counter) > 1:
         return 2
-    elif isinstance(row["COUNTER"], list) and len(row["COUNTER"]) == 1:
+    elif isinstance(counter, list) and len(counter) == 1:
         return 1
     else:
         return 0
@@ -278,6 +280,109 @@ def _transform_checkbox_var(
     return df
 
 
+def _convert_to_oslo_time(utc_time_str: str) -> str:
+    """Converts a UTC time string to Europe/Oslo-time.
+
+    Converts a UTC time string with high-precision microseconds to a time string
+    in the 'Europe/Oslo' timezone, truncating microseconds to six digits if necessary.
+
+    This function handles ISO 8601 formatted strings that may end with 'Z' (indicative of UTC).
+    It truncates microseconds to the first six digits for compatibility with Python's datetime parsing,
+    adjusts for the timezone, and handles daylight saving changes applicable to Oslo.
+
+    Args:
+        utc_time_str: The UTC time string in ISO 8601 format, potentially ending with 'Z'.
+
+    Returns:
+        The time string converted to the 'Europe/Oslo' timezone in ISO 8601 format.
+    """
+    # Handle 'Z' and truncate microseconds to six digits if necessary
+    if utc_time_str.endswith("Z"):
+        utc_time_str = utc_time_str[:-1] + "+00:00"  # Convert 'Z' to '+00:00' for UTC
+
+    # Truncate to six decimal places for seconds
+    dot_index = utc_time_str.find(".")
+    if dot_index != -1:
+        # Ensure only six digits in microseconds part, plus handle remainder of string format
+        utc_time_str = (
+            utc_time_str[: dot_index + 7] + utc_time_str[utc_time_str.rfind("+") :]
+        )
+
+    # Convert to datetime with timezone aware
+    utc_datetime = datetime.fromisoformat(utc_time_str)
+    oslo_timezone = ZoneInfo("Europe/Oslo")
+    oslo_datetime = utc_datetime.astimezone(oslo_timezone)
+
+    return oslo_datetime.isoformat()
+
+
+def _make_meta_df(meta_dict: dict[str, str]) -> pd.DataFrame:
+    """Creates a pandas DataFrame from a dictionary of metadata.
+
+    This function iterates over a dictionary, converting each key-value pair into a row in a DataFrame.
+    The keys are transformed to uppercase and used as column names. For specific fields, such as
+    'ALTINNTIDSPUNKTLEVERT', the function also modifies the content of the DataFrame by applying
+    a conversion function to adjust the time to the Oslo time zone.
+
+    Parameters:
+        meta_dict: A dictionary where each key-value pair represents the field name and its value.
+
+    Returns:
+        pd.DataFrame: A DataFrame where each row represents one key-value pair from the input dictionary,
+        with 'FELTNAVN' and 'FELTVERDI' as column headers.
+    """
+    rows = []
+
+    for key, value in meta_dict.items():
+        rows.append({"FELTNAVN": key.upper(), "FELTVERDI": value})
+
+    df = pd.DataFrame(rows)
+
+    df.loc[df["FELTNAVN"] == "ALTINNTIDSPUNKTLEVERT", "FELTVERDI"] = df.loc[
+        df["FELTNAVN"] == "ALTINNTIDSPUNKTLEVERT", "FELTVERDI"
+    ].apply(_convert_to_oslo_time)
+
+    return df
+
+
+def _read_json_meta(file_path: str) -> Any | None:
+    """Reads a JSON file into a Dict.
+
+    Converting the file path from an XML file path to a JSON file path
+    by replacing 'form_' with 'meta_' and '.xml' with '.json'.
+
+    Args:
+        file_path: The original XML file path.
+
+    Returns:
+        The content of the JSON file as a Dict, or None if the file does not exist.
+    """
+    json_file_path = file_path.replace("form_", "meta_").replace(".xml", ".json")
+
+    if utils.is_gcs(json_file_path):
+
+        fs = FileClient.get_gcs_file_system()
+
+        if fs.exists(json_file_path):
+            try:
+                with fs.open(json_file_path, "r", encoding="utf-8") as file:
+                    return json.load(file)
+
+            except json.JSONDecodeError as e:
+                print(f"Error reading JSON file: {e}")
+                return None
+
+        else:
+            return None
+
+    else:
+        if os.path.exists(json_file_path):
+            with open(json_file_path, encoding="utf-8") as file:
+                return json.load(file)
+        else:
+            return None
+
+
 def isee_transform(
     file_path: str,
     mapping: dict[str, str] | None = None,
@@ -331,6 +436,15 @@ def isee_transform(
 
                 final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
 
+            meta_dict = _read_json_meta(file_path)
+            if meta_dict is not None:
+                meta_df = _make_meta_df(meta_dict)
+                final_df = pd.concat([final_df, meta_df], axis=0, ignore_index=True)
+
+            final_df = pd.concat(
+                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+            )
+
             final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
             final_df["VERSION_NR"] = _extract_angiver_id(file_path)
             final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
@@ -340,10 +454,6 @@ def isee_transform(
             )
 
             final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
-
-            final_df = pd.concat(
-                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
-            )
 
             final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
 
