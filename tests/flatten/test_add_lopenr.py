@@ -1,6 +1,8 @@
-import pytest
 import pandas as pd
+import pytest
+
 from altinn.flatten import _add_lopenr
+
 
 @pytest.fixture
 def sample_df() -> pd.DataFrame:

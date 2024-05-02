@@ -1,6 +1,8 @@
-import pytest
-from unittest.mock import patch
 from unittest.mock import mock_open
+from unittest.mock import patch
+
+import pytest
+
 from altinn.flatten import _read_single_xml_to_dict
 
 

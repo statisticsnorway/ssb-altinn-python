@@ -1,6 +1,9 @@
-import pytest
 from typing import Any
+
+import pytest
+
 from altinn.flatten import _create_levels_col
+
 
 @pytest.mark.parametrize(
     "row, expected_level",

@@ -1,5 +1,7 @@
 import pytest
+
 from altinn.flatten import _extract_counter
+
 
 @pytest.mark.parametrize(
     "input_string, expected_output",

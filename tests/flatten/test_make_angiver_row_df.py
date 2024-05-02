@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import patch
+
 from altinn.flatten import _make_angiver_row_df
+
 
 def test_make_angiver_row_df() -> None:
     # Mock data returned by the helper functions and XML parsing

@@ -1,5 +1,7 @@
 import pytest
+
 from altinn.flatten import _extract_angiver_id
+
 
 @pytest.mark.parametrize(
     "file_path, expected_output",

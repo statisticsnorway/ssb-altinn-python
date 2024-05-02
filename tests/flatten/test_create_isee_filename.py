@@ -1,13 +1,15 @@
-import pytest
-from pytest import MonkeyPatch
-from typing import Any, Optional
-from dapla import FileClient
+from typing import Any
 from unittest.mock import mock_open
 from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import SubElement
 from xml.etree.ElementTree import tostring
-from altinn.flatten import create_isee_filename
+
+import pytest
+from dapla import FileClient
+from pytest import MonkeyPatch
+
 import altinn.utils as utils
+from altinn.flatten import create_isee_filename
 
 
 def generate_sample_xml(ra_nummer: str = "12345") -> str:
@@ -16,6 +18,7 @@ def generate_sample_xml(ra_nummer: str = "12345") -> str:
     ra_nummer_el = SubElement(intern_info, "raNummer")
     ra_nummer_el.text = ra_nummer
     return tostring(root).decode()
+
 
 @pytest.fixture
 def mock_file_client(monkeypatch: MonkeyPatch) -> None:

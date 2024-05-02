@@ -1,7 +1,10 @@
-import pytest
 from typing import Any
 from unittest.mock import patch
+
+import pytest
+
 from altinn.flatten import _validate_interninfo
+
 
 @pytest.fixture
 def xml_data() -> dict[str, Any]:

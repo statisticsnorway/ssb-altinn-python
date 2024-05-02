@@ -1,6 +1,7 @@
-import pytest
 import pandas as pd
+
 from altinn.flatten import _transform_checkbox_var
+
 
 def test_transform_checkbox_var_basic() -> None:
     df = pd.DataFrame(
@@ -20,7 +21,7 @@ def test_transform_checkbox_var_basic() -> None:
         ]
     )
 
-    
+
 def test_transform_checkbox_var_unique_code() -> None:
     df = pd.DataFrame(
         {
