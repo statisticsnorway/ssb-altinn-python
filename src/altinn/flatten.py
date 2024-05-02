@@ -7,12 +7,16 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
+import json
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
+from datetime import datetime
 from typing import Any
 
 import pandas as pd
+import pytz
 import xmltodict
 from dapla import FileClient
 
@@ -166,8 +170,6 @@ def _make_angiver_row_df(file_path: str) -> pd.DataFrame:
         A DataFrame with a single row containing infor on ANGIVER_ID in ISEE-format
 
     """
-    xml_dict = _read_single_xml_to_dict(file_path)
-    root_element = next(iter(xml_dict.keys()))
     angiver_id_row = {
         "FELTNAVN": "ANGIVER_ID",
         "FELTVERDI": _extract_angiver_id(file_path),
@@ -276,8 +278,11 @@ def _transform_checkbox_var(
 
     return df
 
+
 def _convert_to_oslo_time(utc_time_str: str) -> str:
-    """Converts a UTC time string with high-precision microseconds to a time string
+    """Converts a UTC time string to Europe/Oslo-time.
+
+    Converts a UTC time string with high-precision microseconds to a time string
     in the 'Europe/Oslo' timezone, truncating microseconds to six digits if necessary.
 
     This function handles ISO 8601 formatted strings that may end with 'Z' (indicative of UTC).
@@ -286,65 +291,96 @@ def _convert_to_oslo_time(utc_time_str: str) -> str:
 
     Args:
         utc_time_str: The UTC time string in ISO 8601 format, potentially ending with 'Z'.
-    
+
     Returns:
         The time string converted to the 'Europe/Oslo' timezone in ISO 8601 format.
     """
     # Handle 'Z' and truncate microseconds to six digits if necessary
-    if utc_time_str.endswith('Z'):
-        utc_time_str = utc_time_str[:-1] + '+00:00'  # Convert 'Z' to '+00:00' for UTC
+    if utc_time_str.endswith("Z"):
+        utc_time_str = utc_time_str[:-1] + "+00:00"  # Convert 'Z' to '+00:00' for UTC
 
     # Truncate to six decimal places for seconds
-    dot_index = utc_time_str.find('.')
+    dot_index = utc_time_str.find(".")
     if dot_index != -1:
         # Ensure only six digits in microseconds part, plus handle remainder of string format
-        utc_time_str = utc_time_str[:dot_index+7] + utc_time_str[utc_time_str.rfind('+'):]
+        utc_time_str = (
+            utc_time_str[: dot_index + 7] + utc_time_str[utc_time_str.rfind("+") :]
+        )
 
     # Convert to datetime with timezone aware
     utc_datetime = datetime.fromisoformat(utc_time_str)
-    oslo_timezone = pytz.timezone('Europe/Oslo')
+    oslo_timezone = pytz.timezone("Europe/Oslo")
     oslo_datetime = utc_datetime.astimezone(oslo_timezone)
 
     return oslo_datetime.isoformat()
 
-def _read_json_meta(file_path: str) -> Optional[Any]:
+
+def _make_meta_df(meta_dict: dict[str, str]) -> pd.DataFrame:
+    """Creates a pandas DataFrame from a dictionary of metadata.
+
+    This function iterates over a dictionary, converting each key-value pair into a row in a DataFrame.
+    The keys are transformed to uppercase and used as column names. For specific fields, such as
+    'ALTINNTIDSPUNKTLEVERT', the function also modifies the content of the DataFrame by applying
+    a conversion function to adjust the time to the Oslo time zone.
+
+    Parameters:
+        meta_dict: A dictionary where each key-value pair represents the field name and its value.
+
+    Returns:
+        pd.DataFrame: A DataFrame where each row represents one key-value pair from the input dictionary,
+        with 'FELTNAVN' and 'FELTVERDI' as column headers.
     """
-    Reads a JSON file, converting the file path from an XML file path to a JSON file path
+    rows = []
+
+    for key, value in meta_dict.items():
+        rows.append({"FELTNAVN": key.upper(), "FELTVERDI": value})
+
+    df = pd.DataFrame(rows)
+
+    df.loc[df["FELTNAVN"] == "ALTINNTIDSPUNKTLEVERT", "FELTVERDI"] = df.loc[
+        df["FELTNAVN"] == "ALTINNTIDSPUNKTLEVERT", "FELTVERDI"
+    ].apply(_convert_to_oslo_time)
+
+    return df
+
+
+def _read_json_meta(file_path: str) -> Any | None:
+    """Reads a JSON file into a Dict.
+
+    Converting the file path from an XML file path to a JSON file path
     by replacing 'form_' with 'meta_' and '.xml' with '.json'.
 
     Args:
-    - file_path: The original XML file path.
+        file_path: The original XML file path.
 
     Returns:
-    - The content of the JSON file as a pd.DataFrame(), or None if the file does not exist.
+        The content of the JSON file as a Dict, or None if the file does not exist.
     """
-    
-    json_file_path = file_path.replace('form_', 'meta_').replace('.xml', '.json')
-       
-    fs = FileClient.get_gcs_file_system()
+    json_file_path = file_path.replace("form_", "meta_").replace(".xml", ".json")
 
-    if fs.exists(json_file_path):
-        try:
-            with fs.open(json_file_path, 'r', encoding='utf-8') as file:
-                data = json.load(file) 
-            
-        except json.JSONDecodeError as e:
-            print(f"Error reading JSON file: {e}")   
-            
-            
-        rows = []
-        
-        for key, value in data.items():
-                rows.append({'FELTNAVN': key.upper(), 'FELTVERDI': value})
-        
-        df = pd.DataFrame(rows)
-        
-        df.loc[df['FELTNAVN'] == 'ALTINNTIDSPUNKTLEVERT', 'FELTVERDI'] = df.loc[df['FELTNAVN'] == 'ALTINNTIDSPUNKTLEVERT', 'FELTVERDI'].apply(_convert_to_oslo_time)
-        print(df)
-        return df
-            
+    if utils.is_gcs(json_file_path):
+
+        fs = FileClient.get_gcs_file_system()
+
+        if fs.exists(json_file_path):
+            try:
+                with fs.open(json_file_path, "r", encoding="utf-8") as file:
+                    return json.load(file)
+
+            except json.JSONDecodeError as e:
+                print(f"Error reading JSON file: {e}")
+                return None
+
+        else:
+            return None
+
     else:
-        return None
+        if os.path.exists(json_file_path):
+            with open(json_file_path, encoding="utf-8") as file:
+                return json.load(file)
+        else:
+            return None
+
 
 def isee_transform(
     file_path: str,
@@ -398,11 +434,12 @@ def isee_transform(
                 )
 
                 final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
-                
-                
-            meta_df = _read_json_meta(file)
-                
-                
+
+            meta_dict = _read_json_meta(file_path)
+            if meta_dict is not None:
+                meta_df = _make_meta_df(meta_dict)
+                final_df = pd.concat([final_df, meta_df], axis=0, ignore_index=True)
+
             final_df = pd.concat(
                 [final_df, _make_angiver_row_df(file_path)], ignore_index=True
             )
