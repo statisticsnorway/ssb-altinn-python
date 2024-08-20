@@ -72,6 +72,10 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
                             element, "£" + str(counter) + "$" + new_key, sep=sep
                         ).items()
                     )
+                    
+                else:
+                    items.append((new_key, v))       
+                
             counter = 0
 
         else:
