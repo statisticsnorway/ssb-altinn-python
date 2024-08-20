@@ -51,7 +51,8 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
     Returns:
         The flattened dictionary.
     """
-    items: list[tuple[str, str]] = []
+    items: list[tuple[Any, list[Any]]] = []
+
     counter = 0
 
     for k, v in d.items():
@@ -72,6 +73,10 @@ def _flatten_dict(d: Any, parent_key: str = "", sep: str = "_") -> Any:
                             element, "£" + str(counter) + "$" + new_key, sep=sep
                         ).items()
                     )
+
+                else:
+                    items.append((new_key, v))
+
             counter = 0
 
         else:
@@ -412,6 +417,7 @@ def isee_transform(
         ISEE dynarev format.
 
     Raises:
+        ValueError: If reqired keys in InterInfo is missing.
         ValueError: If invalid gcs-file or xml-file.
     """
     if utils.is_valid_xml(file_path):
@@ -490,11 +496,13 @@ def isee_transform(
 
             return final_df
 
+        else:
+            error_message = f"File is missing one or more of the required keys in InternInfo ['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
+            raise ValueError(error_message)
+
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
         raise ValueError(error_message)
-
-    return pd.DataFrame()  # Should never reach this point, but need a return value
 
 
 def xml_transform(file_path: str) -> pd.DataFrame:
