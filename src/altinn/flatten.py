@@ -412,6 +412,7 @@ def isee_transform(
         ISEE dynarev format.
 
     Raises:
+        ValueError: If reqired keys in InterInfo is missing.
         ValueError: If invalid gcs-file or xml-file.
     """
     if utils.is_valid_xml(file_path):
@@ -489,6 +490,10 @@ def isee_transform(
             final_df = final_df[columns_order]
 
             return final_df
+        
+        else:
+            error_message = f"File is missing one or more of the required keys in InternInfo ['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
+            raise ValueError(error_message)
 
     else:
         error_message = f"File is not a valid XML-file: {file_path}"
