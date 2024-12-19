@@ -33,14 +33,16 @@ logger.setLevel("DEBUG")
 
 
 # %%
-def flatten_tabell_i_tabell(
+def flatten_table_in_table(
     table_data: pd.DataFrame,
     rest_of_data: pd.DataFrame,
     tabell_felter: list,
     rad_felter: list,
     counter_starting_value: int = 1,
 ):
-    """Args:
+    """Function for flattening a 'table in table' part of an Altinn form.
+
+    Args:
         table_data (pd.DataFrame):
         rest_of_data (pd.DataFrame):
         counter_starting_value (int): Sets the lopenr to this value for the first part of the table object. If there are multiple table objects that belong in the same dynamic list, adjust this value to avoid duplicate FELTNAVN.
@@ -133,7 +135,7 @@ def flatten_tabell_i_tabell(
 
 
 # %%
-source_file = "gs://ssb-primaer-j-skjema-data-kilde-prod/lbrund/altinn/2024/12/12/0f461103b8e1_5da2a159-2561-4e17-be01-a150b2e6c8bd/form_0f461103b8e1.xml"
+source_file = "gs://ssb-primaer-j-skjema-data-kilde-prod/lbrund/altinn/test/2024/12/4/a9b867d4a91c_e9df2f21-fec7-42e8-8473-33789acbcbba/form_a9b867d4a91c.xml"
 
 # %%
 df = alt.isee_transform(source_file)
@@ -142,9 +144,12 @@ table_data = df.loc[df["FELTNAVN"].str.startswith("AnVekstMineralGjodsGroup_")]
 rest_of_data = df.drop(table_data.index, axis=0)
 assert df.shape[0] == table_data.shape[0] + rest_of_data.shape[0]
 
-output = flatten_tabell_i_tabell(
+output = flatten_table_in_table(
     table_data=table_data,
     rest_of_data=rest_of_data,
     tabell_felter=["Navn"],
     rad_felter=["Aarstid", "Areal", "Mengde"],
 )
+
+# %%
+alt.FileInfo(f"{source_file}").pretty_print()
