@@ -7,15 +7,15 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.2
+#       jupytext_version: 1.15.2
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: egentesting
 #     language: python
-#     name: python3
+#     name: egentesting
 # ---
 
 # %%
-# %%
+print("Test")
 import logging
 
 import numpy as np
@@ -39,21 +39,23 @@ def transform_table_in_table(
     table_fields: list[str],
     row_fields: list[str],
     counter_starting_value: int = 1,
-):
-    """Function for transforming a 'table in table' part of a flattened Altinn form into a shape that ISEE accepts as a dynamic list.
+) -> pd.DataFrame:
+    r"""Function for transforming a 'table in table' part of a flattened Altinn form into a shape that ISEE accepts as a dynamic list.
 
     Args:
-        table_data (pd.DataFrame): Part of the form representing a 'table in table' component.
-        rest_of_data (pd.DataFrame):
+        table_data (pd.DataFrame): Part of the form representing a specific 'table in table' component.
+        rest_of_data (pd.DataFrame): Part of the data not involved in the specific 'table in table' component.
+        table_fields (list[str]): A list of FELTNAVN values that are valid for several rows in the 'table in table'.
+        row_fields (list[str]): A list of FELTNAVN values that are valid only for a siingle row in the 'table in table'.
         counter_starting_value (int): Sets the lopenr to this value for the first part of the table object. If there are multiple table objects that belong in the same dynamic list, adjust this value to avoid duplicate FELTNAVN.
 
     Notes:
-        A simple way to split data is using .loc to filter out relevant rows to a new dataframe, and then using the index to remove them from the primary dataset.
-
-    Example:
+        A simple way to split data is using .loc to filter out relevant rows to a new dataframe, and then using the index to remove them from the primary dataset. See example below.
             table_data = df.loc[df[FELTNAVN].str.startswith("tabell_prefix")]
             rest_of_data = df.drop(table_data.index, axis=0)
             assert df.shape[0] == table_data.shape[0]+rest_of_data.shape[0]
+        If you have several 'table in table' components to unpack, but want them in the same dynamic list, you need to manage the counter_starting_value.
+            A way to do this is using this: max(output.loc[output["FELTNAVN"].str.match(r"your_varname_here_\d{3}")]["FELTNAVN"].str[-3:].astype(int))+1
     """
     table_data = table_data[["FELTNAVN", "FELTVERDI"]]
     pattern = "|".join(table_fields)
@@ -93,8 +95,12 @@ def transform_table_in_table(
             verdi = df_meta.loc[
                 (df_meta["FELTNAVN"].str.endswith(lopenr))
                 & (df_meta["FELTNAVN"].str.contains(felt))
-            ]["FELTVERDI"].item()
-            test[felt] = verdi
+            ]
+            try:
+                verdi = verdi["FELTVERDI"].item()
+                test[felt] = verdi
+            except ValueError as e:
+                logger.debug(e)
 
         current_count = (
             max(flattened_table_data["FELTNAVN"].str[-3:].astype(int)) + 1
@@ -118,11 +124,11 @@ def transform_table_in_table(
         flattened_table_data = pd.concat([flattened_table_data, dynamic_list_rows])
 
     # Re-adding form metadata to flattened_table_data
-    skjema_id = list(rest_of_data["SKJEMA_ID"].unique())[0]
-    delreg_nr = list(rest_of_data["DELREG_NR"].unique())[0]
-    ident_nr = list(rest_of_data["IDENT_NR"].unique())[0]
-    enhets_type = list(rest_of_data["ENHETS_TYPE"].unique())[0]
-    version_nr = list(rest_of_data["VERSION_NR"].unique())[0]
+    skjema_id = next(rest_of_data["SKJEMA_ID"].unique())
+    delreg_nr = next(rest_of_data["DELREG_NR"].unique())
+    ident_nr = next(rest_of_data["IDENT_NR"].unique())
+    enhets_type = next(rest_of_data["ENHETS_TYPE"].unique())
+    version_nr = next(rest_of_data["VERSION_NR"].unique())
     flattened_table_data = (
         flattened_table_data.assign(SKJEMA_ID=skjema_id)
         .assign(DELREG_NR=delreg_nr)
@@ -140,16 +146,38 @@ source_file = "gs://ssb-primaer-j-skjema-data-kilde-prod/lbrund/altinn/test/2024
 # %%
 df = alt.isee_transform(source_file)
 
-table_data = df.loc[df["FELTNAVN"].str.startswith("AnVekstMineralGjodsGroup_")]
+table_data = df.loc[df["FELTNAVN"].str.startswith("NyEngMineralGjodsGroup_")]
 rest_of_data = df.drop(table_data.index, axis=0)
 assert df.shape[0] == table_data.shape[0] + rest_of_data.shape[0]
 
-output = flatten_table_in_table(
+output = transform_table_in_table(
     table_data=table_data,
     rest_of_data=rest_of_data,
     table_fields=["Navn"],
     row_fields=["Aarstid", "Areal", "Mengde"],
 )
+
+table_data = output.loc[output["FELTNAVN"].str.startswith("NyEngHusdyrGjodsGroup_")]
+rest_of_data = output.drop(table_data.index, axis=0)
+assert output.shape[0] == table_data.shape[0] + rest_of_data.shape[0]
+
+output = transform_table_in_table(
+    table_data=table_data,
+    rest_of_data=rest_of_data,
+    table_fields=["Navn"],
+    row_fields=["Aarstid", "Areal", "Mengde"],
+    counter_starting_value=max(
+        output.loc[output["FELTNAVN"].str.match(r"Areal_\d{3}")]["FELTNAVN"]
+        .str[-3:]
+        .astype(int)
+    )
+    + 1,
+)
+
+# %%
+output
+
+# %%
 
 # %%
 alt.FileInfo(f"{source_file}").pretty_print()
