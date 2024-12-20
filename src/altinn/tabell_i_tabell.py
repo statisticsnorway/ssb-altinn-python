@@ -33,17 +33,17 @@ logger.setLevel("DEBUG")
 
 
 # %%
-def flatten_table_in_table(
+def transform_table_in_table(
     table_data: pd.DataFrame,
     rest_of_data: pd.DataFrame,
-    tabell_felter: list,
-    rad_felter: list,
+    table_fields: list[str],
+    row_fields: list[str],
     counter_starting_value: int = 1,
 ):
-    """Function for flattening a 'table in table' part of an Altinn form.
+    """Function for transforming a 'table in table' part of a flattened Altinn form into a shape that ISEE accepts as a dynamic list.
 
     Args:
-        table_data (pd.DataFrame):
+        table_data (pd.DataFrame): Part of the form representing a 'table in table' component.
         rest_of_data (pd.DataFrame):
         counter_starting_value (int): Sets the lopenr to this value for the first part of the table object. If there are multiple table objects that belong in the same dynamic list, adjust this value to avoid duplicate FELTNAVN.
 
@@ -56,11 +56,11 @@ def flatten_table_in_table(
             assert df.shape[0] == table_data.shape[0]+rest_of_data.shape[0]
     """
     table_data = table_data[["FELTNAVN", "FELTVERDI"]]
-    pattern = "|".join(tabell_felter)
+    pattern = "|".join(table_fields)
     df_meta = table_data[
         table_data["FELTNAVN"].str.contains(pattern, case=False, na=False)
     ]
-    pattern = "|".join(rad_felter)
+    pattern = "|".join(row_fields)
     df_row = table_data[
         table_data["FELTNAVN"].str.contains(pattern, case=False, na=False)
     ]
@@ -73,7 +73,7 @@ def flatten_table_in_table(
     )  # Dataframe to be filled with flattened data.
     for lopenr in relevante_lopenr:
         row_data: dict = {}
-        for felt in rad_felter:
+        for felt in row_fields:
             row_data[felt] = tuple(
                 df_row.loc[
                     (df_row["FELTNAVN"].str.endswith(lopenr))
@@ -88,7 +88,7 @@ def flatten_table_in_table(
             }
         )
         table_data: dict = {}
-        for felt in tabell_felter:
+        for felt in table_fields:
             logger.debug(f"df_meta for felt {felt}: \n{df_meta}")
             verdi = df_meta.loc[
                 (df_meta["FELTNAVN"].str.endswith(lopenr))
@@ -147,8 +147,8 @@ assert df.shape[0] == table_data.shape[0] + rest_of_data.shape[0]
 output = flatten_table_in_table(
     table_data=table_data,
     rest_of_data=rest_of_data,
-    tabell_felter=["Navn"],
-    rad_felter=["Aarstid", "Areal", "Mengde"],
+    table_fields=["Navn"],
+    row_fields=["Aarstid", "Areal", "Mengde"],
 )
 
 # %%

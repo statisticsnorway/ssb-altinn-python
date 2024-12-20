@@ -208,7 +208,7 @@ def _create_levels_col(row: Any) -> int:
         return 0
 
 
-def _add_lopenr(df: pd.DataFrame, lopenr_on_nested=True) -> pd.DataFrame:
+def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     """Add a running number to the 'FELTNAVN' column.
 
     Args:
@@ -221,7 +221,6 @@ def _add_lopenr(df: pd.DataFrame, lopenr_on_nested=True) -> pd.DataFrame:
     logger.info(df["LEVELS"].value_counts())
 
     complex_values = set(df.loc[df["LEVELS"] > 1, "FELTNAVN"].tolist())
-    complex_counter: dict = {}
     if complex_values:
         print("\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell).")
         print(
@@ -232,18 +231,11 @@ def _add_lopenr(df: pd.DataFrame, lopenr_on_nested=True) -> pd.DataFrame:
         )
         for var in complex_values:
             print(var)
-            complex_counter[var] = 1
 
     for index, row in df.iterrows():
         if row["LEVELS"] > 0:
             last_counter_value = df.at[index, "COUNTER"][-1]
             df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
-            if lopenr_on_nested and row["LEVELS"] == 2:
-                logger.info(f"{df.at[index, 'FELTNAVN']}")
-                df.at[index, "FELTNAVN"] += "_" + str(
-                    complex_counter[df.at[index, "FELTNAVN"][:-4]]
-                ).zfill(3)
-                complex_counter[df.at[index, "FELTNAVN"][:-8]] += 1
 
     df = df.drop(["COUNTER", "LEVELS"], axis=1)
 
