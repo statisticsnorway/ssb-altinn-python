@@ -590,7 +590,7 @@ def transform_table_in_table(
         )
         dynamic_list_rows = (
             test.reset_index()
-            .assign(lopenr=_assign_lopenr(test, current_count))
+            .assign(lopenr=_assign_lopenr_dynamic_list(test, current_count))
             .drop(columns="index")
             .melt(id_vars="lopenr", value_name="FELTVERDI")
             .assign(
@@ -619,7 +619,7 @@ def transform_table_in_table(
     return pd.concat([rest_of_data, flattened_table_data]).reset_index(drop=True)
 
 
-def _assign_lopenr(df: pd.DataFrame, start: int):
+def _assign_lopenr_dynamic_list(df: pd.DataFrame, start: int):
     return range(start, start + len(df))
 
 
