@@ -25,7 +25,6 @@ from dapla import FileClient
 from altinn import utils
 
 logger = logging.getLogger(__name__)
-logger.setLevel("INFO")
 
 
 def _extract_counter(value: str) -> list[str]:
