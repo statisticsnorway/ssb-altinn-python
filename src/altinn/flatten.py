@@ -436,13 +436,16 @@ def isee_transform(
             for tag in tag_list:
                 # added check if tags exists in xml
                 if tag in xml_dict[root_element]:
-                    input_dict = xml_dict[root_element][tag]
-                    tag_dict = _flatten_dict(input_dict)
-                    tag_df = pd.DataFrame(
-                        list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
-                    )
+                    if xml_dict[root_element][tag] is not None:
+                        input_dict = xml_dict[root_element][tag]
+                        tag_dict = _flatten_dict(input_dict)
+                        tag_df = pd.DataFrame(
+                            list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
+                        )
 
-                    final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
+                        final_df = pd.concat(
+                            [final_df, tag_df], axis=0, ignore_index=True
+                        )
 
             meta_dict = _read_json_meta(file_path)
             if meta_dict is not None:
