@@ -615,11 +615,11 @@ def transform_table_in_table(
         .assign(ENHETS_TYPE=enhets_type)
         .assign(VERSION_NR=version_nr)
     )
-
     return pd.concat([rest_of_data, flattened_table_data]).reset_index(drop=True)
 
 
 def _assign_lopenr_dynamic_list(df: pd.DataFrame, start: int):
+    logger.debug(df)  # If debugging, this is useful to see
     return range(start, start + len(df))
 
 
