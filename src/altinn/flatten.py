@@ -285,6 +285,37 @@ def _transform_checkbox_var(
     return df
 
 
+def _pad_microseconds_to_six(date_str: str) -> str:
+    """Ensures the datetime string has exactly six digits for microseconds.
+
+    This function takes an ISO 8601 datetime string and ensures the fractional
+    seconds part (after the dot) is exactly six digits long. If the string already
+    includes fractional seconds, it pads with zeros or truncates as needed.
+    If the string lacks microseconds but ends with 'Z', it adds '.000000' before the 'Z'.
+
+    Args:
+        date_str (str): An ISO 8601 datetime string, typically ending in 'Z' or a timezone offset.
+
+    Returns:
+        str: The datetime string with exactly six digits after the decimal point.
+
+    Example:
+        _pad_microseconds_to_six("2025-03-20T15:54:40.637Z")
+        -> "2025-03-20T15:54:40.637000Z"
+    """
+    if "." in date_str:
+        before_dot, after_dot = date_str.split(".", 1)
+        fractional, suffix = re.split(r"[Z+-]", after_dot, maxsplit=1)
+        suffix = after_dot[len(fractional) :]  # capture the 'Z' or '+00:00'
+
+        # Pad or truncate to 6 digits
+        fractional = (fractional + "000000")[:6]
+        return f"{before_dot}.{fractional}{suffix}"
+    else:
+        # Add .000000 if missing
+        return date_str.replace("Z", ".000000Z")
+
+
 def _convert_to_oslo_time(utc_time_str: str) -> str:
     """Converts a UTC time string to Europe/Oslo-time.
 
@@ -301,6 +332,9 @@ def _convert_to_oslo_time(utc_time_str: str) -> str:
     Returns:
         The time string converted to the 'Europe/Oslo' timezone in ISO 8601 format.
     """
+    # ensure rigth format on date-string to avoid invalid iso-format ValueError
+    utc_time_str = _pad_microseconds_to_six(utc_time_str)
+
     # Handle 'Z' and truncate microseconds to six digits if necessary
     if utc_time_str.endswith("Z"):
         utc_time_str = utc_time_str[:-1] + "+00:00"  # Convert 'Z' to '+00:00' for UTC
