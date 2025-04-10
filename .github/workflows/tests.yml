@@ -15,18 +15,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { python: "3.10", os: "ubuntu-latest", session: "pre-commit" }
+          - { python: "3.11", os: "ubuntu-latest", session: "pre-commit" }
           - { python: "3.11", os: "ubuntu-latest", session: "mypy" }
-          - { python: "3.10", os: "ubuntu-latest", session: "mypy" }
           - { python: "3.12", os: "ubuntu-latest", session: "mypy" }
-          - { python: "3.11", os: "ubuntu-latest", session: "tests" }
+          - { python: "3.13", os: "ubuntu-latest", session: "mypy" }
           - { python: "3.10", os: "ubuntu-latest", session: "tests" }
+          - { python: "3.11", os: "ubuntu-latest", session: "tests" }
           - { python: "3.12", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.11", os: "windows-latest", session: "tests" }
-          - { python: "3.11", os: "macos-latest", session: "tests" }
-          - { python: "3.10", os: "ubuntu-latest", session: "typeguard" }
+          - { python: "3.13", os: "ubuntu-latest", session: "tests" }
+          - { python: "3.13", os: "windows-latest", session: "tests" }
+          - { python: "3.13", os: "macos-latest", session: "tests" }
+          - { python: "3.11", os: "ubuntu-latest", session: "typeguard" }
           - { python: "3.11", os: "ubuntu-latest", session: "xdoctest" }
-          - { python: "3.10", os: "ubuntu-latest", session: "docs-build" }
+          - { python: "3.11", os: "ubuntu-latest", session: "docs-build" }
 
     env:
       NOXSESSION: ${{ matrix.session }}
@@ -38,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5.2.0
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: ${{ matrix.python }}
 
@@ -59,6 +60,7 @@ jobs:
       - name: Install Poetry
         run: |
           pipx install --pip-args "-c ${{ github.workspace }}/.github/workflows/constraints.txt" poetry
+          pipx inject poetry poetry-plugin-export
           poetry --version
 
       - name: Install Nox
@@ -133,6 +135,7 @@ jobs:
       - name: Install Poetry
         run: |
           pipx install --pip-args "-c ${{ github.workspace }}/.github/workflows/constraints.txt" poetry
+          pipx inject poetry poetry-plugin-export
           poetry --version
 
       - name: Install Nox
@@ -159,13 +162,12 @@ jobs:
       # Replace root path with /github/workspace (mounted in docker container).
       - name: Override coverage source paths for SonarCloud
         run: |
-          sed -i "s/<source><\/source>/<source>\/github\/workspace<\/source>/g" coverage.xml
-          sed -i "s/<source>tests/<source>\/github\/workspace\/tests/g" coverage.xml
+          sed -i "s/<source><\/source>/<source>\/home\/runner\/work\/ssb-altinn-python\/ssb-altinn-python<\/source>/g" coverage.xml
+          sed -i "s/<source>tests/<source>\/home\/runner\/work\/ssb-altinn-python\/ssb-altinn-python\/tests/g" coverage.xml
 
-      - name: SonarCloud Scan
+      - name: SonarQube Cloud Scan
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         # No need to run SonarCloud analysis if dependabot update or token not defined
         if: env.SONAR_TOKEN != '' && (github.actor != 'dependabot[bot]')
-        uses: SonarSource/sonarcloud-github-action@v3.0.0
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
