@@ -7,11 +7,6 @@ on:
       - master
   pull_request:
 
-permissions:
-  contents: read
-  actions: read
-  id-token: write
-
 jobs:
   tests:
     name: ${{ matrix.session }} ${{ matrix.python }} / ${{ matrix.os }}
