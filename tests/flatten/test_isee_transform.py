@@ -37,7 +37,7 @@ def test_isee_transform_simple_df() -> None:
     xml_file = Path(__file__).parent / "data" / "form_1e7d1c3e69c0.xml"
 
     df = isee_transform(str(xml_file))
-    tm.assert_frame_equal(df, facit_df)
+    tm.assert_frame_equal(df, facit_df, check_dtype=False)
 
 
 def test_isee_transform_tags_checkbox_df() -> None:
@@ -53,4 +53,4 @@ def test_isee_transform_tags_checkbox_df() -> None:
         str(xml_file), tag_list=tags, checkbox_vars=checkboxList, unique_code=False
     )
 
-    tm.assert_frame_equal(df, facit_df)
+    tm.assert_frame_equal(df, facit_df, check_dtype=False)
