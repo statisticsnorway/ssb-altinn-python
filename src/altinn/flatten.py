@@ -422,6 +422,20 @@ def _read_json_meta(file_path: str) -> Any | None:
             return None
 
 
+# NY funksjon: 1. validering
+# Funksjon for å validere XML-filen og InternInfo
+def _validate_file(file_path: str) -> None:
+    if not utils.is_valid_xml(file_path):
+        raise ValueError(f"File is not a valid XML-file: {file_path}")
+
+    if not _validate_interninfo(file_path):
+        raise ValueError(
+            f"File is missing one or more of the required keys in InternInfo "
+            f"['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
+        )
+
+
+
 def isee_transform(
     file_path: str,
     mapping: dict[str, str] | None = None,
@@ -454,94 +468,85 @@ def isee_transform(
         ValueError: If reqired keys in InterInfo is missing.
         ValueError: If invalid gcs-file or xml-file.
     """
-    if utils.is_valid_xml(file_path):
-        if _validate_interninfo(file_path):
-            if mapping is None:
-                mapping = {}
+    _validate_file(file_path)
+    if mapping is None:
+        mapping = {}
 
-            if tag_list is None:
-                tag_list = ["SkjemaData"]
+    if tag_list is None:
+        tag_list = ["SkjemaData"]
 
-            xml_dict = _read_single_xml_to_dict(file_path)
-            root_element = next(iter(xml_dict.keys()))
+    xml_dict = _read_single_xml_to_dict(file_path)
+    root_element = next(iter(xml_dict.keys()))
 
-            final_df = pd.DataFrame()
+    final_df = pd.DataFrame()
 
-            for tag in tag_list:
-                # added check if tags exists in xml
-                if tag in xml_dict[root_element]:
-                    if xml_dict[root_element][tag] is not None:
-                        input_dict = xml_dict[root_element][tag]
-                        tag_dict = _flatten_dict(input_dict)
-                        tag_df = pd.DataFrame(
-                            list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
-                        )
+    for tag in tag_list:
+        # added check if tags exists in xml
+        if tag in xml_dict[root_element]:
+            if xml_dict[root_element][tag] is not None:
+                input_dict = xml_dict[root_element][tag]
+                tag_dict = _flatten_dict(input_dict)
+                tag_df = pd.DataFrame(
+                    list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
+                )
 
-                        final_df = pd.concat(
-                            [final_df, tag_df], axis=0, ignore_index=True
-                        )
+                final_df = pd.concat(
+                    [final_df, tag_df], axis=0, ignore_index=True
+                )
 
-            meta_dict = _read_json_meta(file_path)
-            if meta_dict is not None:
-                meta_df = _make_meta_df(meta_dict)
-                final_df = pd.concat([final_df, meta_df], axis=0, ignore_index=True)
+    meta_dict = _read_json_meta(file_path)
+    if meta_dict is not None:
+        meta_df = _make_meta_df(meta_dict)
+        final_df = pd.concat([final_df, meta_df], axis=0, ignore_index=True)
 
-            final_df = pd.concat(
-                [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+    final_df = pd.concat(
+        [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+    )
+
+    final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
+    final_df["VERSION_NR"] = _extract_angiver_id(file_path)
+    final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
+    final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
+    final_df["SKJEMA_ID"] = (
+        xml_dict[root_element]["InternInfo"]["raNummer"] + "A3"
+    )
+
+    final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
+
+    final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
+
+    final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
+        r"£.*?\$", "", regex=True
+    )
+
+    final_df["FELTVERDI"] = final_df["FELTVERDI"].str.replace("\n", " ")
+
+    final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
+
+    if checkbox_vars is not None:
+        for checkbox_var in checkbox_vars:
+            final_df = _transform_checkbox_var(
+                final_df, checkbox_var, unique_code
             )
 
-            final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
-            final_df["VERSION_NR"] = _extract_angiver_id(file_path)
-            final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
-            final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
-            final_df["SKJEMA_ID"] = (
-                xml_dict[root_element]["InternInfo"]["raNummer"] + "A3"
-            )
+    if mapping is not None:
+        final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
 
-            final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
+    final_df = _add_lopenr(final_df)
 
-            final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
+    columns_order = [
+        "SKJEMA_ID",
+        "DELREG_NR",
+        "IDENT_NR",
+        "ENHETS_TYPE",
+        "FELTNAVN",
+        "FELTVERDI",
+        "VERSION_NR",
+    ]
 
-            final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
-                r"£.*?\$", "", regex=True
-            )
+    final_df = final_df[columns_order]
 
-            final_df["FELTVERDI"] = final_df["FELTVERDI"].str.replace("\n", " ")
-
-            final_df["LEVELS"] = final_df.apply(_create_levels_col, axis=1)
-
-            if checkbox_vars is not None:
-                for checkbox_var in checkbox_vars:
-                    final_df = _transform_checkbox_var(
-                        final_df, checkbox_var, unique_code
-                    )
-
-            if mapping is not None:
-                final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
-
-            final_df = _add_lopenr(final_df)
-
-            columns_order = [
-                "SKJEMA_ID",
-                "DELREG_NR",
-                "IDENT_NR",
-                "ENHETS_TYPE",
-                "FELTNAVN",
-                "FELTVERDI",
-                "VERSION_NR",
-            ]
-
-            final_df = final_df[columns_order]
-
-            return final_df
-
-        else:
-            error_message = f"File is missing one or more of the required keys in InternInfo ['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
-            raise ValueError(error_message)
-
-    else:
-        error_message = f"File is not a valid XML-file: {file_path}"
-        raise ValueError(error_message)
+    return final_df
 
 
 def xml_transform(file_path: str) -> pd.DataFrame:
