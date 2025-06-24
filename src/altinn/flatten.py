@@ -425,6 +425,19 @@ def _read_json_meta(file_path: str) -> Any | None:
 # NY funksjon: 1. validering
 # Funksjon for å validere XML-filen og InternInfo
 def _validate_file(file_path: str) -> None:
+    """Validates that the provided XML file is valid and contains required InternInfo keys.
+
+    This function checks whether the file at `file_path` is a valid XML file and
+    whether it contains the necessary keys in the `InternInfo` section:
+    'enhetsIdent', 'enhetsType', and 'delregNr'.
+
+    Args:
+        file_path : Path to the XML file to validate.
+
+    Raises:
+        ValueError: If the file is not a valid XML file.
+        ValueError: If the file does not contain all required InternInfo keys.
+    """
     if not utils.is_valid_xml(file_path):
         raise ValueError(f"File is not a valid XML-file: {file_path}")
 
@@ -433,7 +446,6 @@ def _validate_file(file_path: str) -> None:
             f"File is missing one or more of the required keys in InternInfo "
             f"['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
         )
-
 
 
 def isee_transform(
@@ -463,10 +475,6 @@ def isee_transform(
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
         ISEE dynarev format.
-
-    Raises:
-        ValueError: If reqired keys in InterInfo is missing.
-        ValueError: If invalid gcs-file or xml-file.
     """
     _validate_file(file_path)
     if mapping is None:
@@ -490,34 +498,26 @@ def isee_transform(
                     list(tag_dict.items()), columns=["FELTNAVN", "FELTVERDI"]
                 )
 
-                final_df = pd.concat(
-                    [final_df, tag_df], axis=0, ignore_index=True
-                )
+                final_df = pd.concat([final_df, tag_df], axis=0, ignore_index=True)
 
     meta_dict = _read_json_meta(file_path)
     if meta_dict is not None:
         meta_df = _make_meta_df(meta_dict)
         final_df = pd.concat([final_df, meta_df], axis=0, ignore_index=True)
 
-    final_df = pd.concat(
-        [final_df, _make_angiver_row_df(file_path)], ignore_index=True
-    )
+    final_df = pd.concat([final_df, _make_angiver_row_df(file_path)], ignore_index=True)
 
     final_df["IDENT_NR"] = xml_dict[root_element]["InternInfo"]["enhetsIdent"]
     final_df["VERSION_NR"] = _extract_angiver_id(file_path)
     final_df["DELREG_NR"] = xml_dict[root_element]["InternInfo"]["delregNr"]
     final_df["ENHETS_TYPE"] = xml_dict[root_element]["InternInfo"]["enhetsType"]
-    final_df["SKJEMA_ID"] = (
-        xml_dict[root_element]["InternInfo"]["raNummer"] + "A3"
-    )
+    final_df["SKJEMA_ID"] = xml_dict[root_element]["InternInfo"]["raNummer"] + "A3"
 
     final_df = final_df[~final_df["FELTNAVN"].str.contains("@xsi:nil")]
 
     final_df["COUNTER"] = final_df["FELTNAVN"].apply(_extract_counter)
 
-    final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(
-        r"£.*?\$", "", regex=True
-    )
+    final_df["FELTNAVN"] = final_df["FELTNAVN"].str.replace(r"£.*?\$", "", regex=True)
 
     final_df["FELTVERDI"] = final_df["FELTVERDI"].str.replace("\n", " ")
 
@@ -525,9 +525,7 @@ def isee_transform(
 
     if checkbox_vars is not None:
         for checkbox_var in checkbox_vars:
-            final_df = _transform_checkbox_var(
-                final_df, checkbox_var, unique_code
-            )
+            final_df = _transform_checkbox_var(final_df, checkbox_var, unique_code)
 
     if mapping is not None:
         final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
