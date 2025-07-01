@@ -1831,14 +1831,14 @@ test = ["click", "pre-commit", "pytest (>=7.0)", "pytest-asyncio (>=0.19.0)", "p
 
 [[package]]
 name = "jupyterhub"
-version = "5.2.1"
+version = "5.3.0"
 description = "JupyterHub: A multi-user server for Jupyter notebooks"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "jupyterhub-5.2.1-py3-none-any.whl", hash = "sha256:88907b5638c4966e0de25fce3af4aaa925bccd2171850575e1e0ba241d1add54"},
-    {file = "jupyterhub-5.2.1.tar.gz", hash = "sha256:5b35444c2c254e60563887d1d59c2376813d16a166ec6e0a410c773cdbd37ebd"},
+    {file = "jupyterhub-5.3.0-py3-none-any.whl", hash = "sha256:310c284aca2ebe940bd6d4daffa1d5ab42a412b84d43e7ddacbed759fc47ed22"},
+    {file = "jupyterhub-5.3.0.tar.gz", hash = "sha256:57834b36e7db8f26f21d9aeba1e1d5b8c91b9ff14a7c144097178977aa1e723f"},
 ]
 
 [package.dependencies]
@@ -1846,11 +1846,11 @@ alembic = ">=1.4"
 certipy = ">=0.1.2"
 idna = "*"
 jinja2 = ">=2.11.0"
-jupyter-events = "*"
+jupyter_events = "*"
 oauthlib = ">=3.0"
 packaging = "*"
 pamela = {version = ">=1.1.0", markers = "sys_platform != \"win32\""}
-prometheus-client = ">=0.5.0"
+prometheus_client = ">=0.5.0"
 psutil = {version = ">=5.6.5", markers = "sys_platform == \"win32\""}
 pydantic = ">=2"
 python-dateutil = "*"
