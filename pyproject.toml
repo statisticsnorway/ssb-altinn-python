@@ -29,6 +29,7 @@ ssb-altinn-python = "altinn.__main__:main"
 [tool.poetry]
 classifiers = ["Development Status :: 4 - Beta"]
 requires-poetry = ">=2.0"
+packages = [{ include = "altinn", from = "src" }]
 
 [tool.poetry.group.dev.dependencies]
 pygments = ">=2.10.0"
