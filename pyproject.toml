@@ -1,27 +1,34 @@
-[tool.poetry]
+[project]
 name = "ssb-altinn-python"
 version = "0.4.13"
 description = "SSB Altinn Python"
-authors = ["Vidar Strandseter <vidar.strandseter@ssb.no>"]
+authors = [{ name = "Vidar Strandseter", email = "vidar.strandseter@ssb.no" }]
+maintainers = [{ name = "Statistics Norway, Data enablement Department (724)" }]
 license = "MIT"
 readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dynamic = ["classifiers"]
+dependencies = [
+    "dapla-toolbelt>=1.6.2",
+    "defusedxml>=0.7.1",
+    "pandas>=2.2.0",
+    "pandas-stubs>=2.0.0.230412",
+    "xmltodict>=0.13.0",
+    "types-xmltodict>=0.13.0.3",
+]
+
+[project.urls]
 homepage = "https://github.com/statisticsnorway/ssb-altinn-python"
 repository = "https://github.com/statisticsnorway/ssb-altinn-python"
 documentation = "https://statisticsnorway.github.io/ssb-altinn-python"
-packages = [{ include = "altinn", from = "src" }]
-classifiers = ["Development Status :: 4 - Beta"]
-
-[tool.poetry.urls]
 Changelog = "https://github.com/statisticsnorway/ssb-altinn-python/releases"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-dapla-toolbelt = ">=1.6.2"
-defusedxml = ">=0.7.1"
-pandas = ">=2.2.0"
-pandas-stubs = ">=2.0.0.230412"
-xmltodict = ">=0.13.0"
-types-xmltodict = ">=0.13.0.3"
+[project.scripts]
+ssb-altinn-python = "altinn.__main__:main"
+
+[tool.poetry]
+classifiers = ["Development Status :: 4 - Beta"]
+requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 pygments = ">=2.10.0"
@@ -41,12 +48,13 @@ sphinx-click = ">=3.0.2"
 typeguard = ">=2.13.3"
 xdoctest = { extras = ["colors"], version = ">=0.15.10" }
 myst-parser = { version = ">=0.16.1" }
+deptry = ">=0.23.0"
+
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.9"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-
-[tool.poetry.scripts]
-ssb-altinn-python = "altinn.__main__:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -60,6 +68,9 @@ relative_files = true
 [tool.coverage.report]
 show_missing = true
 fail_under = 50
+
+[tool.deptry.per_rule_ignores]
+DEP001 = ["nox", "nox_poetry"]  # packages available by default
 
 [tool.mypy]
 strict = true
@@ -103,7 +114,7 @@ select = [
     "RUF",  # the ruff developer's own rules
 ]
 ignore = [
-    "ANN202", # Don't requiere return type annotation for private functions.
+    "ANN202", # Don't require return type annotation for private functions.
     "ANN401", # Allow type annotation with type Any.
     "D100",   # Supress undocumented-public-module. Only doc of public api required.
     "FBT001", # Allow boolean positional arguments in a function.
