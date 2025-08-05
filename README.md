@@ -18,7 +18,6 @@
 [pypi status]: https://pypi.org/project/ssb-altinn-python/
 [documentation]: https://statisticsnorway.github.io/ssb-altinn-python
 [tests]: https://github.com/statisticsnorway/ssb-altinn-python/actions?workflow=Tests
-
 [sonarcov]: https://sonarcloud.io/summary/overall?id=statisticsnorway_ssb-altinn-python
 [sonarquality]: https://sonarcloud.io/summary/overall?id=statisticsnorway_ssb-altinn-python
 [pre-commit]: https://github.com/pre-commit/pre-commit
