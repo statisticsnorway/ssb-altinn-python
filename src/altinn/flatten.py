@@ -511,7 +511,7 @@ def _add_interninfo_columns(
     df["SKJEMA_ID"] = interninfo["raNummer"] + "A3"
     df = df[~df["FELTNAVN"].str.contains("@xsi:nil")].copy()
     df.loc[:, "COUNTER"] = df["FELTNAVN"].apply(_extract_counter)
-    df["FELTNAVN"] = df["FELTNAVN"].str.replace(r"£.*?\$", "", regex=True)
+    df["FELTNAVN"] = df["FELTNAVN"].str.replace(r"£.*?\$", "", regex=True).str.strip()
     if "FELTVERDI" in df.columns:
         df["FELTVERDI"] = df["FELTVERDI"].astype(str).str.replace("\n", " ")
     df["LEVELS"] = df.apply(_create_levels_col, axis=1)
