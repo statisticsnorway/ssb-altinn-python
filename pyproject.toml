@@ -1,6 +1,6 @@
 [project]
 name = "ssb-altinn-python"
-version = "0.4.13"
+version = "0.4.14"
 description = "SSB Altinn Python"
 authors = [{ name = "Vidar Strandseter", email = "vidar.strandseter@ssb.no" }]
 maintainers = [{ name = "Statistics Norway, Data enablement Department (724)" }]
