@@ -1,5 +1,6 @@
 import logging
 
+from dapla_suv_tools.suv_client import SuvClient
 import eimerdb as db
 import pandas as pd
 
@@ -44,7 +45,7 @@ class AltinnEimerdbProcessor:
         """
         pass
 
-    def insert_into_eimerdb(self, data, keys: list[str], table_name):
+    def insert_into_eimerdb(self, data: pd.DataFrame, keys: list[str], table_name: str):
         """Checks for duplicates on selected keys"""
         existing = self.conn.query(f"SELECT * FROM {table_name}")
         data = data.merge(existing[keys], on=keys, how="left", indicator=True)
@@ -161,16 +162,16 @@ class AltinnEimerdbProcessor:
             ]
         ]
 
-    def insert_skjemamottak(self, data):
+    def insert_skjemamottak(self, data: pd.DataFrame) -> None:
         self.insert_into_eimerdb(
             data, [*self.periods, "skjema", "refnr"], "skjemamottak"
         )
 
-    def table_kontaktinfo(self):
+    def table_kontaktinfo(self) -> None:
         data = self.extract_kontaktinfo()
         self.insert_kontaktinfo(data)
 
-    def extract_kontaktinfo(self):
+    def extract_kontaktinfo(self) -> pd.DataFrame:
         data = pd.read_xml(self.xml_path)
         necessary_columns = [
             "kontaktPersonNavn",
@@ -225,7 +226,7 @@ class AltinnEimerdbProcessor:
         data[self.periods] = data[self.periods].astype(int)
         return data
 
-    def insert_kontaktinfo(self, data):
+    def insert_kontaktinfo(self, data: pd.DataFrame) -> None:
         self.insert_into_eimerdb(
             data, [*self.periods, "skjema", "refnr"], "kontaktinfo"
         )
