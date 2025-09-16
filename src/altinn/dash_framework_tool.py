@@ -1,25 +1,50 @@
+import glob
+import json
 import logging
 
-from dapla_suv_tools.suv_client import SuvClient
 import eimerdb as db
 import pandas as pd
+from dapla_suv_tools.suv_client import SuvClient
 
 logger = logging.getLogger(__name__)
 
 
 class AltinnEimerdbProcessor:
+    """Tool for transferring Altinn3 data to an editing ready eimerdb instance.
+
+    Has methods for processing a single form, all forms in a folder and a method for inserting data into an eimerdb table without creating duplicates.
+    """
+
     def __init__(
         self,
         database_name: str,
         storage_location: str,
+        ra_number: str,  # Should maybe also support list?
+        delreg_nr: str,
         xml_period_mapping: dict[str, str],
         suv_period_mapping: dict[str, str],
         path_to_form_folder: str,
         xml_ident_field: str = "reporteeOrgNr",
         suv_ident_field: str = "orgnr",
-        process_all_forms: bool = True,
+        process_all_forms: bool = False,
     ) -> None:
-        """Tool for"""
+        """Instantiate the processor and connect it to the eimerdb instance.
+
+        Args:
+            database_name: Name of the eimerdb database to insert into.
+            storage_location: Location for the eimerdb to insert into.
+            ra_number: The form number 'RA-xxxx'.
+            delreg_nr: The SFU delregisternummer for the collection, used to populate the 'enheter' table.
+            xml_period_mapping: Mapping between the names you want for your period variables and the name of the fields in the xml files.
+            suv_period_mapping: Mapping between the names you want for your period variables and the name of the fields in the suv data.
+            path_to_form_folder: Path to the folder where the altinn form data (xml, json and pdf) are stored. Must be '/buckets/' path.
+            xml_ident_field: The name of the field in altinn form xml to use as the value for 'ident'.
+            suv_ident_field: The name of the 'ident' value in the suv...
+            process_all_forms: Boolean to decide if the insertion code should run for all forms during instantiation of the class.
+
+        """
+        self.ra_number = ra_number
+        self.delreg_nr = delreg_nr
         self.xml_ident_field = xml_ident_field
         self.suv_ident_field = suv_ident_field
         self.database_name = database_name
@@ -36,7 +61,9 @@ class AltinnEimerdbProcessor:
             self.process_all_forms()
 
     def _is_valid(self) -> None:
-        """Should check:
+        """Validates that the provided arguments are correct.
+
+        Should check:
         - That all self.periods are in the database table schemas.
         - That the tables 'kontaktinfo', 'skjemamottak' and 'enheter' exists.
         - That the schemas are correct.
@@ -45,8 +72,21 @@ class AltinnEimerdbProcessor:
         """
         pass
 
-    def insert_into_eimerdb(self, data: pd.DataFrame, keys: list[str], table_name: str):
-        """Checks for duplicates on selected keys"""
+    def insert_into_eimerdb(
+        self, data: pd.DataFrame, keys: list[str], table_name: str
+    ) -> None:
+        """Inserts dataframe contents into eimerdb instance.
+
+        Checks for duplicates on keys before inserting into table.
+
+        Args:
+            data: A dataframe containing the columns specified in the eimerdb table schema with rows to insert.
+            keys: Columns to use when checking existing data for duplicates before inserting new data.
+            table_name: The table to insert data into.
+
+        Note:
+            This method can be used to insert into other tables in the eimerdb database.
+        """
         existing = self.conn.query(f"SELECT * FROM {table_name}")
         data = data.merge(existing[keys], on=keys, how="left", indicator=True)
         new_data = data[data["_merge"] == "left_only"]
@@ -54,10 +94,10 @@ class AltinnEimerdbProcessor:
             self.conn.insert(table_name, new_data)
             logger.info(f"Inserted new row into '{table_name}'.")
         else:
-
             logger.info(f"Already exists in '{table_name}', skipping record.")
 
-    def extract_json(self):
+    def extract_json(self) -> pd.DataFrame:
+        """Gets the reference number (refnr) and timestamp for submission from the json file."""
         with open(
             self.json_path,
             encoding="utf-8",
@@ -74,14 +114,19 @@ class AltinnEimerdbProcessor:
         )
         return json_content
 
-    def process_all_forms(self):
+    def process_all_forms(self) -> None:
+        """Processes all forms found in the bucket path."""
         self.table_enheter()
         for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
             logger.info(f"Processing: {form}")
             self.process_altinn_form(f"{form}")
 
-    def process_altinn_form(self, form):
-        """"""
+    def process_altinn_form(self, form: str) -> None:
+        """Processes a specific form.
+
+        Args:
+            form: Path to the xml file for the form.
+        """
         self.xml_path = None  # Sikre at det "nullstilles", sikkert unødvendig
         self.json_path = None
         self.xml_path = form
@@ -89,7 +134,9 @@ class AltinnEimerdbProcessor:
         self.table_skjemamottak()
         self.table_kontaktinfo()
 
-    def table_enheter(self):
+    def table_enheter(self) -> None:
+        """Uses dapla-suv-tools to get information about the sample and which form(s) they are sent and inserts information into the eimerdb instance."""
+        # TODO: Make sure it works with surveys that have more than one form.
         client = SuvClient()
         form_id = {
             x["id"]
@@ -112,11 +159,13 @@ class AltinnEimerdbProcessor:
             )
             self.insert_into_eimerdb(data, [*self.periods, "ident"], "enheter")
 
-    def table_skjemamottak(self):
+    def table_skjemamottak(self) -> None:
+        """Creates the table 'skjemamottak' based on altinn forms."""
         data = self.extract_skjemamottak()
         self.insert_skjemamottak(data)
 
-    def extract_skjemamottak_xml(self):
+    def extract_skjemamottak_xml(self) -> pd.DataFrame:
+        """Extracts the necessary information for creating the 'skjemamottak' table from the xml file."""
         xml_content = pd.read_xml(self.xml_path)
         xml_content = xml_content[
             ["raNummer", self.xml_ident_field, *self.period_xml_fields]
@@ -136,7 +185,8 @@ class AltinnEimerdbProcessor:
         )
         return xml_content
 
-    def extract_skjemamottak(self):
+    def extract_skjemamottak(self) -> pd.DataFrame:
+        """Uses data from the xml file combined with the json file to create a one-row dataframe to insert into 'skjemamottak'."""
         data = pd.concat(
             [self.extract_skjemamottak_xml(), self.extract_json()], axis=1
         ).reset_index(drop=True)
@@ -163,15 +213,18 @@ class AltinnEimerdbProcessor:
         ]
 
     def insert_skjemamottak(self, data: pd.DataFrame) -> None:
+        """Inserts the new row into 'skjemamottak' table."""
         self.insert_into_eimerdb(
             data, [*self.periods, "skjema", "refnr"], "skjemamottak"
         )
 
     def table_kontaktinfo(self) -> None:
+        """Creates the table 'skjemamottak' based on altinn forms."""
         data = self.extract_kontaktinfo()
         self.insert_kontaktinfo(data)
 
     def extract_kontaktinfo(self) -> pd.DataFrame:
+        """Extracts the necessary information for creating the 'kontaktinfo' table from the xml and json files."""
         data = pd.read_xml(self.xml_path)
         necessary_columns = [
             "kontaktPersonNavn",
@@ -227,6 +280,7 @@ class AltinnEimerdbProcessor:
         return data
 
     def insert_kontaktinfo(self, data: pd.DataFrame) -> None:
+        """Inserts the new row into 'kontaktinfo' table."""
         self.insert_into_eimerdb(
             data, [*self.periods, "skjema", "refnr"], "kontaktinfo"
         )
