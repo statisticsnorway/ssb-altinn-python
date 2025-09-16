@@ -86,8 +86,15 @@ class AltinnEimerdbProcessor:
 
         Note:
             This method can be used to insert into other tables in the eimerdb database.
+
+        Raises:
+            ValueError: If 'existing' is not pd.DataFrame
         """
         existing = self.conn.query(f"SELECT * FROM {table_name}")
+        if not isinstance(existing, pd.DataFrame):
+            raise ValueError(
+                f"Value of 'existing' not pd.DataFrame. Received: {type(existing)}"
+            )
         data = data.merge(existing[keys], on=keys, how="left", indicator=True)
         new_data = data[data["_merge"] == "left_only"]
         if not new_data.empty:
@@ -98,6 +105,8 @@ class AltinnEimerdbProcessor:
 
     def extract_json(self) -> pd.DataFrame:
         """Gets the reference number (refnr) and timestamp for submission from the json file."""
+        if self.json_path is None:
+            raise ValueError("'self.json_path' cannot be None.")
         with open(
             self.json_path,
             encoding="utf-8",
@@ -166,6 +175,8 @@ class AltinnEimerdbProcessor:
 
     def extract_skjemamottak_xml(self) -> pd.DataFrame:
         """Extracts the necessary information for creating the 'skjemamottak' table from the xml file."""
+        if self.xml_path is None:
+            raise ValueError("'self.json_path' cannot be None.")
         xml_content = pd.read_xml(self.xml_path)
         xml_content = xml_content[
             ["raNummer", self.xml_ident_field, *self.period_xml_fields]
@@ -225,6 +236,8 @@ class AltinnEimerdbProcessor:
 
     def extract_kontaktinfo(self) -> pd.DataFrame:
         """Extracts the necessary information for creating the 'kontaktinfo' table from the xml and json files."""
+        if self.xml_path is None:
+            raise ValueError("'self.json_path' cannot be None.")
         data = pd.read_xml(self.xml_path)
         necessary_columns = [
             "kontaktPersonNavn",
