@@ -72,7 +72,7 @@ def xml_json_files(tmp_path):
     return str(xml_path), str(json_path)
 
 
-def test_insert_into_eimerdb_inserts_new_rows(processor_factory):
+def test_insert_into_database_inserts_new_rows(processor_factory):
     proc, fake = processor_factory(existing_return=pd.DataFrame(columns=["aar", "mnd"]))
     df = pd.DataFrame(
         [
@@ -80,7 +80,7 @@ def test_insert_into_eimerdb_inserts_new_rows(processor_factory):
         ]
     )
 
-    proc.insert_into_eimerdb(df, keys=["aar", "mnd"], table_name="mytable")
+    proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
 
     assert len(fake.insert_calls) == 1
     table, inserted = fake.insert_calls[0]
@@ -93,7 +93,7 @@ def test_insert_into_eimerdb_inserts_new_rows(processor_factory):
     )
 
 
-def test_insert_into_eimerdb_skips_duplicates(processor_factory):
+def test_insert_into_database_skips_duplicates(processor_factory):
     existing = pd.DataFrame(
         [
             {"aar": 2023, "mnd": 6},
@@ -106,12 +106,12 @@ def test_insert_into_eimerdb_skips_duplicates(processor_factory):
         ]
     )
 
-    proc.insert_into_eimerdb(df, keys=["aar", "mnd"], table_name="mytable")
+    proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
 
     assert len(fake.insert_calls) == 0
 
 
-def test_insert_into_eimerdb_invalid_existing_type_raises(processor_factory):
+def test_insert_into_database_invalid_existing_type_raises(processor_factory):
     proc, _ = processor_factory(
         existing_return=[{"aar": 2023, "mnd": 6}]
     )  # not a DataFrame
@@ -122,7 +122,7 @@ def test_insert_into_eimerdb_invalid_existing_type_raises(processor_factory):
     )
 
     with pytest.raises(ValueError):
-        proc.insert_into_eimerdb(df, keys=["aar", "mnd"], table_name="mytable")
+        proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
 
 
 def test_extract_json_success(processor_factory, xml_json_files):
@@ -216,7 +216,7 @@ def test_extract_kontaktinfo(processor_factory, xml_json_files):
     assert df.loc[0, "mnd"] == 6
 
 
-def test_insert_helpers_call_insert_into_eimerdb(
+def test_insert_helpers_call_insert_into_database(
     processor_factory, xml_json_files, monkeypatch
 ):
     proc, _ = processor_factory()
@@ -226,12 +226,12 @@ def test_insert_helpers_call_insert_into_eimerdb(
 
     calls = {}
 
-    def fake_insert_into_eimerdb(data, keys, table_name):
+    def fake_insert_into_database(data, keys, table_name):
         calls["data"] = data.copy()
         calls["keys"] = list(keys)
         calls["table_name"] = table_name
 
-    monkeypatch.setattr(proc, "insert_into_eimerdb", fake_insert_into_eimerdb)
+    monkeypatch.setattr(proc, "insert_into_database", fake_insert_into_database)
 
     # skjemamottak
     proc.table_skjemamottak()

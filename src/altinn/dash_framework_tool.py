@@ -72,7 +72,7 @@ class AltinnEimerdbProcessor:
         """
         pass
 
-    def insert_into_eimerdb(
+    def insert_into_database(
         self, data: pd.DataFrame, keys: list[str], table_name: str
     ) -> None:
         """Inserts dataframe contents into eimerdb instance.
@@ -166,7 +166,7 @@ class AltinnEimerdbProcessor:
                 [[*suv_periods, record[self.suv_ident_field], record["skjema_type"]]],
                 columns=[*self.suv_period_mapping.keys(), "ident", "skjemaer"],
             )
-            self.insert_into_eimerdb(data, [*self.periods, "ident"], "enheter")
+            self.insert_into_database(data, [*self.periods, "ident"], "enheter")
 
     def table_skjemamottak(self) -> None:
         """Creates the table 'skjemamottak' based on altinn forms."""
@@ -225,7 +225,7 @@ class AltinnEimerdbProcessor:
 
     def insert_skjemamottak(self, data: pd.DataFrame) -> None:
         """Inserts the new row into 'skjemamottak' table."""
-        self.insert_into_eimerdb(
+        self.insert_into_database(
             data, [*self.periods, "skjema", "refnr"], "skjemamottak"
         )
 
@@ -294,6 +294,6 @@ class AltinnEimerdbProcessor:
 
     def insert_kontaktinfo(self, data: pd.DataFrame) -> None:
         """Inserts the new row into 'kontaktinfo' table."""
-        self.insert_into_eimerdb(
+        self.insert_into_database(
             data, [*self.periods, "skjema", "refnr"], "kontaktinfo"
         )
