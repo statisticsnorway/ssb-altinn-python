@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -10,13 +11,13 @@ from altinn.dash_framework_tool import AltinnFormProcessor
 class FakeConn:
     """Minimal fake for eimerdb.EimerDBInstance."""
 
-    def __init__(self, existing_return):
+    def __init__(self, existing_return: Any) -> None:
         """Init method."""
         self._existing_return = existing_return
-        self.insert_calls = []  # list[tuple[str, pd.DataFrame]]
-        self.queries = []
+        self.insert_calls: list[tuple[str, pd.DataFrame]] = []
+        self.queries: list[str] = []
 
-    def query(self, sql: str):
+    def query(self, sql: str) -> Any:
         self.queries.append(sql)
         return self._existing_return
 
