@@ -234,14 +234,14 @@ def test_insert_helpers_call_insert_into_database(
     monkeypatch.setattr(proc, "insert_into_database", fake_insert_into_database)
 
     # skjemamottak
-    proc.table_skjemamottak()
+    proc.process_skjemamottak()
     assert calls["table_name"] == "skjemamottak"
     assert calls["keys"] == ["aar", "mnd", "skjema", "refnr"]
     assert {"aar", "mnd", "skjema", "ident", "refnr"}.issubset(calls["data"].columns)
 
     # kontaktinfo
     calls.clear()
-    proc.table_kontaktinfo()
+    proc.process_kontaktinfo()
     assert calls["table_name"] == "kontaktinfo"
     assert calls["keys"] == ["aar", "mnd", "skjema", "refnr"]
     assert {"aar", "mnd", "skjema", "ident", "refnr"}.issubset(calls["data"].columns)

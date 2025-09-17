@@ -1,3 +1,8 @@
+"""Module for processing Altinn 3 data.
+
+If a more diverse set of alternative data storage technologies become available, might be an idea to make AltinnFormProcessor into an abstract base class and make some more tailored variants.
+"""
+
 import glob
 import json
 import logging
@@ -9,10 +14,14 @@ from dapla_suv_tools.suv_client import SuvClient
 logger = logging.getLogger(__name__)
 
 
-class AltinnEimerdbProcessor:
+class AltinnFormProcessor:
     """Tool for transferring Altinn3 data to an editing ready eimerdb instance.
 
     Has methods for processing a single form, all forms in a folder and a method for inserting data into an eimerdb table without creating duplicates.
+
+    Notes:
+        Notice that you can use inheritance to reuse parts of this class while adapting it to suit your specific needs. An example of this would be if you don't use eimerdb, you can overwrite the 'insert_into_database()' method to save the data in a way that suits your needs, while reusing the rest of the code.
+        If you want to process the skjemadata part of the xml using this class you can write your own implementation as a method called 'process_skjemadata()' and it will be run during the 'process_altinn_form()'
     """
 
     def __init__(
@@ -55,7 +64,7 @@ class AltinnEimerdbProcessor:
         self.periods = [x for x in xml_period_mapping.keys()]
         self.form_folder = path_to_form_folder
 
-        self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
+        self.connect_to_database()
         self._is_valid()
         if process_all_forms:
             self.process_all_forms()
@@ -71,6 +80,13 @@ class AltinnEimerdbProcessor:
         - storage_location doesn't start with 'gs://'
         """
         pass
+
+    def connect_to_database(self) -> None:
+        """Method for establishing a connection to an eimerdb instance.
+
+        Can be overwritten if another database type is used.
+        """
+        self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
 
     def insert_into_database(
         self, data: pd.DataFrame, keys: list[str], table_name: str
@@ -125,7 +141,7 @@ class AltinnEimerdbProcessor:
 
     def process_all_forms(self) -> None:
         """Processes all forms found in the bucket path."""
-        self.table_enheter()
+        self.process_enheter()
         for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
             logger.info(f"Processing: {form}")
             self.process_altinn_form(f"{form}")
@@ -140,11 +156,19 @@ class AltinnEimerdbProcessor:
         self.json_path = None
         self.xml_path = form
         self.json_path = form.replace(".xml", ".json").replace("form_", "meta_")
-        self.table_skjemamottak()
-        self.table_kontaktinfo()
+        self.process_skjemamottak()
+        self.process_kontaktinfo()
+        self.process_skjemadata()
 
-    def table_enheter(self) -> None:
-        """Uses dapla-suv-tools to get information about the sample and which form(s) they are sent and inserts information into the eimerdb instance."""
+    def process_skjemadata(self) -> None:
+        """Placeholder method to enable implementation of individual skjemadata processing."""
+        pass
+
+    def process_enheter(self) -> None:
+        """This method will create a table containing information about the survey sample and which form each participant should answer.
+
+        Uses dapla-suv-tools to get information about the sample and which form(s) they are sent and inserts information into the eimerdb instance.
+        """
         # TODO: Make sure it works with surveys that have more than one form.
         client = SuvClient()
         form_id = {
@@ -168,8 +192,11 @@ class AltinnEimerdbProcessor:
             )
             self.insert_into_database(data, [*self.periods, "ident"], "enheter")
 
-    def table_skjemamottak(self) -> None:
-        """Creates the table 'skjemamottak' based on altinn forms."""
+    def process_skjemamottak(self) -> None:
+        """Creates the table 'skjemamottak' based on altinn forms.
+
+        This table is used for keeping track of which forms has been sent from which participant. In some cases the same form is sent multiple times from the same participant, which leads to duplicated information that needs to be handled. The table created by this method provides the structure to keep track of each forms content and has variables to show which form is 'active'.
+        """
         data = self.extract_skjemamottak()
         self.insert_skjemamottak(data)
 
@@ -229,8 +256,8 @@ class AltinnEimerdbProcessor:
             data, [*self.periods, "skjema", "refnr"], "skjemamottak"
         )
 
-    def table_kontaktinfo(self) -> None:
-        """Creates the table 'skjemamottak' based on altinn forms."""
+    def process_kontaktinfo(self) -> None:
+        """Creates the table 'kontaktinfo' based on altinn forms."""
         data = self.extract_kontaktinfo()
         self.insert_kontaktinfo(data)
 
@@ -276,7 +303,7 @@ class AltinnEimerdbProcessor:
             | {v: k for k, v in self.xml_period_mapping.items()}
         )
         data = pd.concat([data, self.extract_json()], axis=1).reset_index(drop=True)
-        data = data.apply(
+        data = data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
             lambda col: col.dropna().iloc[0] if not col.dropna().empty else None, axis=0
         )
         data = pd.DataFrame([data])
