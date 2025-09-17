@@ -15,8 +15,8 @@ dependencies = [
     "pandas-stubs>=2.0.0.230412",
     "xmltodict>=0.13.0",
     "types-xmltodict>=0.13.0.3",
-    "ssb-eimerdb (>=0.2.5,<0.3.0)",
-    "dapla-suv-tools (>=0.1.80,<0.2.0)",
+    "ssb-eimerdb>=0.2.5",
+    "dapla-suv-tools>=0.1.80",
 ]
 
 [project.urls]

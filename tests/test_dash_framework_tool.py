@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from altinn.dash_framework_tool import AltinnEimerdbProcessor
+from altinn.dash_framework_tool import AltinnFormProcessor
 
 
 class FakeConn:
@@ -45,7 +45,7 @@ def processor_factory(monkeypatch, tmp_path):
         monkeypatch.setattr(
             "altinn.dash_framework_tool.db.EimerDBInstance", _fake_ctor, raising=True
         )
-        proc = AltinnEimerdbProcessor(
+        proc = AltinnFormProcessor(
             database_name="testdb",
             storage_location=str(tmp_path),
             ra_number="RA-0000",
