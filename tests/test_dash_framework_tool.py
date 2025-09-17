@@ -1,4 +1,5 @@
-import json
+import shutil
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -49,7 +50,7 @@ def processor_factory(monkeypatch, tmp_path):
             storage_location=str(tmp_path),
             ra_number="RA-0000",
             delreg_nr="00000",
-            xml_period_mapping={"aar": "year", "mnd": "month"},
+            xml_period_mapping={"aar": "periodeAAr", "mnd": "periodeNummer"},
             suv_period_mapping={"aar": "year", "mnd": "month"},
             path_to_form_folder=str(tmp_path),
         )
@@ -60,33 +61,14 @@ def processor_factory(monkeypatch, tmp_path):
 
 @pytest.fixture()
 def xml_json_files(tmp_path):
-    """Create a minimal XML + JSON pair compatible with the processor methods."""
-    xml_content = """
-    <root>
-      <row>
-        <raNummer>RA-0571</raNummer>
-        <reporteeOrgNr>123456789</reporteeOrgNr>
-        <year>2024</year>
-        <month>4</month>
-        <kontaktPersonNavn>Ola Nordmann</kontaktPersonNavn>
-        <kontaktPersonEpost>ola@example.com</kontaktPersonEpost>
-        <kontaktPersonTelefon>99887766</kontaktPersonTelefon>
-        <kontaktInfoBekreftet>1</kontaktInfoBekreftet>
-        <kontaktInfoKommentar>Alt ok</kontaktInfoKommentar>
-        <forklarKrevendeForh>Ingen</forklarKrevendeForh>
-      </row>
-    </root>
-    """.strip()
+    """Create an XML + JSON pair using real files from the test data directory."""
+    # Use the actual XML and JSON files
+    xml_source = Path(__file__).parent / "data" / "form_373a35bb8808.xml"
+    json_source = Path(__file__).parent / "data" / "meta_373a35bb8808.json"
     xml_path = tmp_path / "form_abc.xml"
-    xml_path.write_text(xml_content, encoding="utf-8")
-
-    json_payload = {
-        "altinnReferanse": "abc",
-        "altinnTidspunktLevert": "2024-04-29T06:31:17.3678585Z",
-    }
     json_path = tmp_path / "meta_abc.json"
-    json_path.write_text(json.dumps(json_payload), encoding="utf-8")
-
+    shutil.copy(xml_source, xml_path)
+    shutil.copy(json_source, json_path)
     return str(xml_path), str(json_path)
 
 
@@ -94,7 +76,7 @@ def test_insert_into_eimerdb_inserts_new_rows(processor_factory):
     proc, fake = processor_factory(existing_return=pd.DataFrame(columns=["aar", "mnd"]))
     df = pd.DataFrame(
         [
-            {"aar": 2024, "mnd": 4, "value": "x"},
+            {"aar": 2023, "mnd": 6, "value": "x"},
         ]
     )
 
@@ -114,13 +96,13 @@ def test_insert_into_eimerdb_inserts_new_rows(processor_factory):
 def test_insert_into_eimerdb_skips_duplicates(processor_factory):
     existing = pd.DataFrame(
         [
-            {"aar": 2024, "mnd": 4},
+            {"aar": 2023, "mnd": 6},
         ]
     )
     proc, fake = processor_factory(existing_return=existing)
     df = pd.DataFrame(
         [
-            {"aar": 2024, "mnd": 4, "value": "x"},
+            {"aar": 2023, "mnd": 6, "value": "x"},
         ]
     )
 
@@ -131,11 +113,11 @@ def test_insert_into_eimerdb_skips_duplicates(processor_factory):
 
 def test_insert_into_eimerdb_invalid_existing_type_raises(processor_factory):
     proc, _ = processor_factory(
-        existing_return=[{"aar": 2024, "mnd": 4}]
+        existing_return=[{"aar": 2023, "mnd": 6}]
     )  # not a DataFrame
     df = pd.DataFrame(
         [
-            {"aar": 2024, "mnd": 4, "value": "x"},
+            {"aar": 2023, "mnd": 6, "value": "x"},
         ]
     )
 
@@ -151,7 +133,7 @@ def test_extract_json_success(processor_factory, xml_json_files):
     out = proc.extract_json()
 
     assert set(out.columns) == {"dato_mottatt", "refnr"}
-    assert out.loc[0, "refnr"] == "abc"
+    assert out.loc[0, "refnr"] == "373a35bb8808"
     assert str(out.loc[0, "dato_mottatt"]).startswith("2024-04-29T06:31:17")
 
 
@@ -172,10 +154,10 @@ def test_extract_skjemamottak_xml_and_extract_skjemamottak(
 
     xml_df = proc.extract_skjemamottak_xml()
 
-    assert set("skjema", "ident", "aar", "mnd").issubset(xml_df.columns)
+    assert set(["skjema", "ident", "aar", "mnd"]).issubset(xml_df.columns)
     assert xml_df.shape[0] == 1
     # ident should be cast to string of integers
-    assert xml_df.loc[0, "ident"] == "123456789"
+    assert xml_df.loc[0, "ident"] == "999999994"
 
     full_df = proc.extract_skjemamottak()
     # Expected columns order
@@ -191,9 +173,9 @@ def test_extract_skjemamottak_xml_and_extract_skjemamottak(
         "aktiv",
     ]
     assert list(full_df.columns) == expected_cols
-    assert full_df.loc[0, "aar"] == 2024
-    assert full_df.loc[0, "mnd"] == 4
-    assert full_df.loc[0, "ident"] == "123456789"
+    assert full_df.loc[0, "aar"] == 2023
+    assert full_df.loc[0, "mnd"] == 6
+    assert full_df.loc[0, "ident"] == "999999994"
     # Time should be pandas Timestamp floored to seconds
     assert isinstance(full_df.loc[0, "dato_mottatt"], pd.Timestamp)
     assert full_df.loc[0, "dato_mottatt"].microsecond == 0
@@ -227,11 +209,11 @@ def test_extract_kontaktinfo(processor_factory, xml_json_files):
     assert expected_columns.issubset(df.columns)
     assert df.shape[0] == 1
     # Types and values
-    assert df.loc[0, "ident"] == "123456789"
-    assert df.loc[0, "telefon"] == "99887766"
+    assert df.loc[0, "ident"] == "999999994"
+    assert df.loc[0, "telefon"] == "21090000"
     assert df.loc[0, "bekreftet_kontaktinfo"] == "1"
-    assert df.loc[0, "aar"] == 2024
-    assert df.loc[0, "mnd"] == 4
+    assert df.loc[0, "aar"] == 2023
+    assert df.loc[0, "mnd"] == 6
 
 
 def test_insert_helpers_call_insert_into_eimerdb(
