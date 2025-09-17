@@ -303,8 +303,15 @@ class AltinnFormProcessor:
             | {v: k for k, v in self.xml_period_mapping.items()}
         )
         data = pd.concat([data, self.extract_json()], axis=1).reset_index(drop=True)
-        data = data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
-            lambda col: col.dropna().iloc[0] if not col.dropna().empty else None, axis=0
+        data = pd.DataFrame(
+            [
+                data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
+                    lambda col: (
+                        col.dropna().iloc[0] if not col.dropna().empty else None
+                    ),
+                    axis=0,
+                )
+            ]
         )
         data = pd.DataFrame([data])
         for column in ["ident", "telefon", "bekreftet_kontaktinfo"]:
