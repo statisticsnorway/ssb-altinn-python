@@ -313,7 +313,6 @@ class AltinnFormProcessor:
                 )
             ]
         )
-        data = pd.DataFrame([data])
         for column in ["ident", "telefon", "bekreftet_kontaktinfo"]:
             try:
                 data[column] = data[column].astype(int)
