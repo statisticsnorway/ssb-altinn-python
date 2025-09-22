@@ -321,6 +321,11 @@ class AltinnFormProcessor:
                     f"Something went wrong with setting {column} .astype(int)\n",
                     exc_info=e,
                 )
+            except TypeError as e:
+                logger.debug(
+                    f"Something went wrong with setting {column} .astype(int)\n",
+                    exc_info=e,
+                )
             data[column] = data[column].astype(str)
         data[self.periods] = data[self.periods].astype(int)
         return data
