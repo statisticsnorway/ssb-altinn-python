@@ -6,12 +6,39 @@ If a more diverse set of alternative data storage technologies become available,
 import glob
 import json
 import logging
+from logging.handlers import RotatingFileHandler
+
 
 import eimerdb as db
 import pandas as pd
 from dapla_suv_tools.suv_client import SuvClient
+from .flatten import isee_transform
 
 logger = logging.getLogger(__name__)
+
+logger.setLevel(logging.INFO)  # Set to DEBUG for more verbose output
+
+# Create formatter
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(formatter)
+
+# File handler (rotating)
+file_handler = RotatingFileHandler(
+    'app.log', maxBytes=1024*1024, backupCount=5, encoding='utf8'
+)
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(formatter)
+
+# Add handlers
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
 
 
 class AltinnFormProcessor:
@@ -28,14 +55,14 @@ class AltinnFormProcessor:
         self,
         database_name: str,
         storage_location: str,
+        path_to_form_folder: str,
         ra_number: str,  # Should maybe also support list?
         delreg_nr: str,
         xml_period_mapping: dict[str, str],
-        suv_period_mapping: dict[str, str],
-        path_to_form_folder: str,
+        suv_period_mapping: dict[str, str] | None = None,
         xml_ident_field: str = "reporteeOrgNr",
-        suv_ident_field: str = "orgnr",
-        isee_transform_mapping = None,
+        suv_ident_field: str | None = None,
+        isee_transform_mapping=None,
         process_all_forms: bool = False,
     ) -> None:
         """Instantiate the processor and connect it to the eimerdb instance.
@@ -143,7 +170,13 @@ class AltinnFormProcessor:
 
     def process_all_forms(self) -> None:
         """Processes all forms found in the bucket path."""
-        self.process_enheter()
+        print("Starting")
+        if self.suv_ident_field and self.suv_period_mapping:
+            print("Using suv")
+            self.process_enheter_suv()
+        else:
+            print("Using default")
+            self.process_enheter()
         for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
             logger.info(f"Processing: {form}")
             self.process_altinn_form(f"{form}")
@@ -164,7 +197,7 @@ class AltinnFormProcessor:
 
     def process_skjemadata(self) -> None:
         xml_content = pd.read_xml(self.xml_path)
-        data = isee_transform(self.xml_path, mapping = self.isee_transform_mapping)
+        data = isee_transform(self.xml_path, mapping=self.isee_transform_mapping)
         xml_content = pd.DataFrame(
             [
                 xml_content.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
@@ -194,14 +227,17 @@ class AltinnFormProcessor:
         data[["ident", *self.xml_period_mapping.keys()]] = data[
             ["ident", *self.xml_period_mapping.keys()]
         ].ffill()
-        data.loc[~data["variabel"].isin([
-            "ALTINNREFERANSE",
-            "ALTINNTIDSPUNKTLEVERT",
-            "ANGIVER_ID"
-        ])]
-        self.insert_into_database(data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved")
+        data = data.loc[
+            ~data["variabel"].isin(
+                ["ALTINNREFERANSE", "ALTINNTIDSPUNKTLEVERT", "ANGIVER_ID"]
+            )
+        ]
+        data[self.periods] = data[self.periods].astype(int)
+        self.insert_into_database(
+            data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved"
+        )
 
-    def process_enheter(self) -> None:
+    def process_enheter_suv(self) -> None:
         """This method will create a table containing information about the survey sample and which form each participant should answer.
 
         Uses dapla-suv-tools to get information about the sample and which form(s) they are sent and inserts information into the eimerdb instance.
@@ -228,6 +264,31 @@ class AltinnFormProcessor:
                 columns=[*self.suv_period_mapping.keys(), "ident", "skjemaer"],
             )
             self.insert_into_database(data, [*self.periods, "ident"], "enheter")
+
+    def process_enheter(self):
+        for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
+            logger.info(f"Processing form: {form}")
+            xml_content = pd.read_xml(form)
+            xml_content = pd.DataFrame(
+                [
+                    xml_content.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
+                        lambda col: (
+                            col.dropna().iloc[0] if not col.dropna().empty else None
+                        ),
+                        axis=0,
+                    )
+                ]
+            )
+            xml_content[self.xml_ident_field] = (
+                xml_content[self.xml_ident_field].astype(float).astype(int).astype(str)
+            )
+            xml_content = xml_content[
+                [*self.period_xml_fields, self.xml_ident_field, "raNummer"]
+            ].rename(
+                columns={"raNummer": "skjema", self.xml_ident_field: "ident"}
+                | {v: k for k, v in self.xml_period_mapping.items()}
+            )
+            self.insert_into_database(xml_content, keys=[], table_name="enheter")
 
     def process_skjemamottak(self) -> None:
         """Creates the table 'skjemamottak' based on altinn forms.
@@ -339,7 +400,9 @@ class AltinnFormProcessor:
             }
             | {v: k for k, v in self.xml_period_mapping.items()}
         )
-        data = pd.concat([data, self.extract_json().drop(columns="dato_mottatt")], axis=1).reset_index(drop=True)
+        data = pd.concat(
+            [data, self.extract_json().drop(columns="dato_mottatt")], axis=1
+        ).reset_index(drop=True)
         data = pd.DataFrame(
             [
                 data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
