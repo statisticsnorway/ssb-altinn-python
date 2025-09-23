@@ -35,6 +35,7 @@ class AltinnFormProcessor:
         path_to_form_folder: str,
         xml_ident_field: str = "reporteeOrgNr",
         suv_ident_field: str = "orgnr",
+        isee_transform_mapping = None,
         process_all_forms: bool = False,
     ) -> None:
         """Instantiate the processor and connect it to the eimerdb instance.
@@ -63,6 +64,7 @@ class AltinnFormProcessor:
         self.period_xml_fields = [x for x in xml_period_mapping.values()]
         self.periods = [x for x in xml_period_mapping.keys()]
         self.form_folder = path_to_form_folder
+        self.isee_transform_mapping = isee_transform_mapping
 
         self.connect_to_database()
         self._is_valid()
@@ -161,8 +163,43 @@ class AltinnFormProcessor:
         self.process_skjemadata()
 
     def process_skjemadata(self) -> None:
-        """Placeholder method to enable implementation of individual skjemadata processing."""
-        pass
+        xml_content = pd.read_xml(self.xml_path)
+        data = isee_transform(self.xml_path, mapping = self.isee_transform_mapping)
+        xml_content = pd.DataFrame(
+            [
+                xml_content.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
+                    lambda col: (
+                        col.dropna().iloc[0] if not col.dropna().empty else None
+                    ),
+                    axis=0,
+                )
+            ]
+        )
+        xml_content[self.xml_ident_field] = (
+            xml_content[self.xml_ident_field].astype(int).astype(str)
+        )
+        for period_field in self.period_xml_fields:
+            xml_content[period_field] = xml_content[period_field].astype(int)
+        data = pd.concat([xml_content, data], axis=1)
+        column_renaming = {
+            "SKJEMA_ID": "skjema",
+            self.xml_ident_field: "ident",
+            "VERSION_NR": "refnr",
+            "FELTNAVN": "variabel",
+            "FELTVERDI": "verdi",
+        } | {v: k for k, v in self.xml_period_mapping.items()}
+        data = data.rename(columns=column_renaming)[
+            [x for x in column_renaming.values()]
+        ]
+        data[["ident", *self.xml_period_mapping.keys()]] = data[
+            ["ident", *self.xml_period_mapping.keys()]
+        ].ffill()
+        data.loc[~data["variabel"].isin([
+            "ALTINNREFERANSE",
+            "ALTINNTIDSPUNKTLEVERT",
+            "ANGIVER_ID"
+        ])]
+        self.insert_into_database(data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved")
 
     def process_enheter(self) -> None:
         """This method will create a table containing information about the survey sample and which form each participant should answer.
@@ -302,7 +339,7 @@ class AltinnFormProcessor:
             }
             | {v: k for k, v in self.xml_period_mapping.items()}
         )
-        data = pd.concat([data, self.extract_json()], axis=1).reset_index(drop=True)
+        data = pd.concat([data, self.extract_json().drop(columns="dato_mottatt")], axis=1).reset_index(drop=True)
         data = pd.DataFrame(
             [
                 data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
