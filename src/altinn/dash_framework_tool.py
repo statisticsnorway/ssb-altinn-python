@@ -288,7 +288,7 @@ class AltinnFormProcessor:
                 columns={"raNummer": "skjema", self.xml_ident_field: "ident"}
                 | {v: k for k, v in self.xml_period_mapping.items()}
             )
-            self.insert_into_database(xml_content, keys=[], table_name="enheter")
+            self.insert_into_database(xml_content, keys=[*self.periods, "ident", "skjema"], table_name="enheter")
 
     def process_skjemamottak(self) -> None:
         """Creates the table 'skjemamottak' based on altinn forms.
