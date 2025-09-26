@@ -1,5 +1,7 @@
 """Module for processing Altinn 3 data.
 
+TODO: Make a method that takes the xml and json files and creates a parquet file containing everything necessary for insertion, in case the user doesn't want to transfer xml and json to the prod bucket.
+
 If a more diverse set of alternative data storage technologies become available, might be an idea to make AltinnFormProcessor into an abstract base class and make some more tailored variants.
 """
 
@@ -40,6 +42,12 @@ file_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
+def convert_to_int(value):
+    try:
+        num = float(str(value).replace(',', '.'))
+        return int(num) if num.is_integer() else int(num)
+    except ValueError:
+        return value
 
 class AltinnFormProcessor:
     """Tool for transferring Altinn3 data to an editing ready eimerdb instance.
@@ -233,6 +241,9 @@ class AltinnFormProcessor:
             )
         ]
         data[self.periods] = data[self.periods].astype(int)
+
+        data["verdi"] = data["verdi"].apply(convert_to_int)
+
         self.insert_into_database(
             data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved"
         )
@@ -261,7 +272,7 @@ class AltinnFormProcessor:
         for record in results:
             data = pd.DataFrame(
                 [[*suv_periods, record[self.suv_ident_field], record["skjema_type"]]],
-                columns=[*self.suv_period_mapping.keys(), "ident", "skjemaer"],
+                columns=[*self.suv_period_mapping.keys(), "ident", "skjema"],
             )
             self.insert_into_database(data, [*self.periods, "ident"], "enheter")
 
