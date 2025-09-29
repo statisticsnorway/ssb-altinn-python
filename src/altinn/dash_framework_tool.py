@@ -42,12 +42,18 @@ file_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
-def convert_to_int(value):
+def convert_value(x, always_string=True):
     try:
-        num = float(str(value).replace(',', '.'))
-        return int(num) if num.is_integer() else int(num)
-    except ValueError:
-        return value
+        # Try to convert to float
+        f = float(str(x).replace(",", "."))
+        # If successful, try to convert to int (if no decimals)
+        if f.is_integer():
+            return int(f)
+        else:
+            return f
+    except (ValueError, TypeError):
+        # If conversion fails, return as string
+        return str(x)
 
 class AltinnFormProcessor:
     """Tool for transferring Altinn3 data to an editing ready eimerdb instance.
@@ -184,7 +190,7 @@ class AltinnFormProcessor:
             self.process_enheter_suv()
         else:
             print("Using default")
-            self.process_enheter()
+            #self.process_enheter()
         for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
             logger.info(f"Processing: {form}")
             self.process_altinn_form(f"{form}")
@@ -199,8 +205,8 @@ class AltinnFormProcessor:
         self.json_path = None
         self.xml_path = form
         self.json_path = form.replace(".xml", ".json").replace("form_", "meta_")
-        self.process_skjemamottak()
-        self.process_kontaktinfo()
+        #self.process_skjemamottak()
+        #self.process_kontaktinfo()
         self.process_skjemadata()
 
     def process_skjemadata(self) -> None:
@@ -242,8 +248,8 @@ class AltinnFormProcessor:
         ]
         data[self.periods] = data[self.periods].astype(int)
 
-        data["verdi"] = data["verdi"].apply(convert_to_int)
-
+        data["verdi"] = data["verdi"].apply(convert_value, args=[True])
+        data["verdi"] = data["verdi"].astype(str)
         self.insert_into_database(
             data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved"
         )
