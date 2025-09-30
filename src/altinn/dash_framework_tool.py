@@ -95,9 +95,9 @@ class AltinnFormProcessor:
             process_all_forms: Boolean to decide if the insertion code should run for all forms during instantiation of the class.
 
         """
+        self.xml_ident_field = xml_ident_field
         self.ra_number = ra_number
         self.delreg_nr = delreg_nr
-        self.xml_ident_field = xml_ident_field
         self.suv_ident_field = suv_ident_field
         self.database_name = database_name
         self.storage_location = storage_location
@@ -258,7 +258,7 @@ class AltinnFormProcessor:
             xml_content[period_field] = xml_content[period_field].astype(int)
         data = pd.concat([xml_content, data], axis=1)
         column_renaming = {
-            "SKJEMA_ID": "skjema",
+            "raNummer": "skjema",
             self.xml_ident_field: "ident",
             "VERSION_NR": "refnr",
             "FELTNAVN": "variabel",
@@ -293,7 +293,7 @@ class AltinnFormProcessor:
         form_id = {
             x["id"]
             for x in client.get_skjema_by_ra_nummer(
-                ra_nummer="RA-0571", max_results=0, versjon=1, latest_only=False
+                ra_nummer=self.ra_number, max_results=0, versjon=1, latest_only=False
             )
         }
         if len(form_id) != 1:
@@ -303,7 +303,9 @@ class AltinnFormProcessor:
         suv_periods = [
             results[0][period] for period in self.suv_period_mapping.values()
         ]
-        results = client.get_utvalg_from_sfu(delreg_nr="97018", ra_nummer="RA-0571")
+        results = client.get_utvalg_from_sfu(
+            delreg_nr=self.delreg_nr, ra_nummer=self.ra_number
+        )
         for record in results:
             data = pd.DataFrame(
                 [[*suv_periods, record[self.suv_ident_field], record["skjema_type"]]],
