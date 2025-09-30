@@ -10,10 +10,10 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-
 import eimerdb as db
 import pandas as pd
 from dapla_suv_tools.suv_client import SuvClient
+
 from .flatten import isee_transform
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,7 @@ logger.setLevel(logging.INFO)  # Set to DEBUG for more verbose output
 
 # Create formatter
 formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 
 # Console handler
@@ -33,7 +32,7 @@ console_handler.setFormatter(formatter)
 
 # File handler (rotating)
 file_handler = RotatingFileHandler(
-    'app.log', maxBytes=1024*1024, backupCount=5, encoding='utf8'
+    "app.log", maxBytes=1024 * 1024, backupCount=5, encoding="utf8"
 )
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
@@ -41,6 +40,7 @@ file_handler.setFormatter(formatter)
 # Add handlers
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
 
 def convert_value(x, always_string=True):
     try:
@@ -54,6 +54,7 @@ def convert_value(x, always_string=True):
     except (ValueError, TypeError):
         # If conversion fails, return as string
         return str(x)
+
 
 class AltinnFormProcessor:
     """Tool for transferring Altinn3 data to an editing ready eimerdb instance.
@@ -124,6 +125,34 @@ class AltinnFormProcessor:
         """
         pass
 
+    def process_datatyper(self, year):
+        def infer_value(x, always_string=True):
+            try:
+                # Try to convert to float
+                f = float(str(x).replace(",", "."))
+                # If successful, try to convert to int (if no decimals)
+                if f.is_integer():
+                    return "int"
+                else:
+                    return "float"
+            except (ValueError, TypeError):
+                # If conversion fails, return as string
+                return "str"
+
+        data = self.conn.query(
+            "SELECT * FROM skjemadata_hoved", partition_select={"aar": [year]}
+        )
+
+        data["datatype"] = data["verdi"].apply(convert_value)
+        data = data.groupby("variabel", as_index=False)["datatype"].max()
+        data["aar"] = int(year)
+        data["tabell"] = "skjemadata_hoved"
+        data["skildring"] = ""
+        data["radnr"] = 0
+        self.insert_into_database(
+            data, [*self.periods, "tabell", "variabel"], "datatyper"
+        )
+
     def connect_to_database(self) -> None:
         """Method for establishing a connection to an eimerdb instance.
 
@@ -190,7 +219,7 @@ class AltinnFormProcessor:
             self.process_enheter_suv()
         else:
             print("Using default")
-            #self.process_enheter()
+            self.process_enheter()
         for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
             logger.info(f"Processing: {form}")
             self.process_altinn_form(f"{form}")
@@ -205,8 +234,8 @@ class AltinnFormProcessor:
         self.json_path = None
         self.xml_path = form
         self.json_path = form.replace(".xml", ".json").replace("form_", "meta_")
-        #self.process_skjemamottak()
-        #self.process_kontaktinfo()
+        self.process_skjemamottak()
+        self.process_kontaktinfo()
         self.process_skjemadata()
 
     def process_skjemadata(self) -> None:
@@ -305,7 +334,11 @@ class AltinnFormProcessor:
                 columns={"raNummer": "skjema", self.xml_ident_field: "ident"}
                 | {v: k for k, v in self.xml_period_mapping.items()}
             )
-            self.insert_into_database(xml_content, keys=[*self.periods, "ident", "skjema"], table_name="enheter")
+            self.insert_into_database(
+                xml_content,
+                keys=[*self.periods, "ident", "skjema"],
+                table_name="enheter",
+            )
 
     def process_skjemamottak(self) -> None:
         """Creates the table 'skjemamottak' based on altinn forms.
