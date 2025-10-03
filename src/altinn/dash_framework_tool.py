@@ -7,7 +7,6 @@ If a more diverse set of alternative data storage technologies become available,
 
 import glob
 import logging
-from logging.handlers import RotatingFileHandler
 
 import eimerdb as db
 import pandas as pd
@@ -15,31 +14,7 @@ from dapla_suv_tools.suv_client import SuvClient
 
 from .flatten import xml_transform, create_isee_filename, _read_json_meta
 
-
 logger = logging.getLogger(__name__)
-
-logger.setLevel(logging.INFO)  # Set to DEBUG for more verbose output
-
-# Create formatter
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
-
-# Console handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(formatter)
-
-# File handler (rotating)
-file_handler = RotatingFileHandler(
-    "app.log", maxBytes=1024 * 1024, backupCount=5, encoding="utf8"
-)
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(formatter)
-
-# Add handlers
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
 
 
 def xml_to_parquet(
@@ -153,6 +128,12 @@ class AltinnFormProcessor:
         """Method for generating a template to insert into the 'datatyper' table."""
         ...
 
+    def get_value_with_default(self, file, field_name, default_value):
+        try:
+            return file.loc[file["FELTNAVN"] == field_name, "FELTVERDI"].item()
+        except (ValueError, AttributeError):
+            return ""
+
     def get_refnr(self) -> pd.DataFrame:
         """Gets the reference number (refnr)."""
         file = self.data
@@ -162,9 +143,10 @@ class AltinnFormProcessor:
     def get_date_received(self):
         """Gets the date_received for the Altinn form."""
         file = self.data
-        date_received = file.loc[file["FELTNAVN"] == "altinnTidspunktLevert"][
-            "FELTVERDI"
-        ].item()
+        date_received = file.loc[
+            file["FELTNAVN"] == "altinnTidspunktLevert", "FELTVERDI"
+        ].iloc[0]
+        date_received = pd.to_datetime(date_received).floor("s")
         return date_received
 
     def get_form_number(self):
@@ -186,10 +168,10 @@ class AltinnFormProcessor:
         """Gets the period value(s) from the form."""
         file = self.data
         period_dict = {}
-        for period, period_name in self.period_parquet_fields.items():
-            period_dict[period] = file.loc[file["FELTNAVN"] == period_name][
-                "FELTVERDI"
-            ].item()
+        for period, period_name in self.parquet_period_mapping.items():
+            period_dict[period] = int(
+                file.loc[file["FELTNAVN"] == period_name]["FELTVERDI"].item()
+            )
         return period_dict
 
     def process_skjemamottak(self):
@@ -203,6 +185,7 @@ class AltinnFormProcessor:
             "aktiv": True,
         }
         skjemamottak_record = pd.DataFrame([skjemamottak_record])
+        print(skjemamottak_record)
         self.insert_or_save_data(
             data=skjemamottak_record,
             keys=[*self.periods, "skjema", "refnr"],
@@ -210,11 +193,33 @@ class AltinnFormProcessor:
         )
 
     def process_kontaktinfo(self):
+        file = self.data
+
+        kontaktperson = self.get_value_with_default(
+            file, "Kontakt_kontaktPersonNavn", ""
+        )
+        telefon = self.get_value_with_default(file, "Kontakt_kontaktPersonTelefon", "")
+        epost = self.get_value_with_default(file, "Kontakt_kontaktPersonEpost", "")
+        bekreftet_kontaktinfo = self.get_value_with_default(
+            file, "Kontakt_kontaktInfoBekreftet", ""
+        )
+        kommentar_kontaktinfo = self.get_value_with_default(
+            file, "Kontakt_kontaktInfoKommentar", ""
+        )
+        kommentar_krevende = self.get_value_with_default(
+            file, "forklarKrevendeForh", ""
+        )
+
         kontaktinfo_record = self.get_periods() | {
-            # periods
             "skjema": self.get_form_number(),
             "ident": self.get_ident(),
             "refnr": self.get_refnr(),
+            "kontaktperson": kontaktperson,
+            "telefon": telefon,
+            "epost": epost,
+            "bekreftet_kontaktinfo": bekreftet_kontaktinfo,
+            "kommentar_kontaktinfo": kommentar_kontaktinfo,
+            "kommentar_krevende": kommentar_krevende,
         }
         kontaktinfo_record = pd.DataFrame([kontaktinfo_record])
         self.insert_or_save_data(
@@ -224,17 +229,19 @@ class AltinnFormProcessor:
         )
 
     def process_enheter(self):
-        enheter_record = self.get_periods() | {
-            # periods
-            "ident": self.get_ident(),
-            "skjema": self.get_form_number(),
-        }
-        enheter_record = pd.DataFrame([enheter_record])
-        self.insert_or_save_data(
-            data=enheter_record,
-            keys=[*self.periods, "ident", "skjema"],
-            table_name="enheter",
-        )
+        for form in glob.glob(f"{self.form_folder}/**/*.parquet", recursive=True):
+            self.data = None  # Sikre at det "nullstilles", sikkert unødvendig
+            self.data = pd.read_parquet(form)
+            enheter_record = self.get_periods() | {
+                "ident": self.get_ident(),
+                "skjema": self.get_form_number(),
+            }
+            enheter_record = pd.DataFrame([enheter_record])
+            self.insert_or_save_data(
+                data=enheter_record,
+                keys=[*self.periods, "ident", "skjema"],
+                table_name="enheter",
+            )
 
     def process_skjemadata(self):
         logger.warning("No method defined for processing skjemadata.")
@@ -262,7 +269,7 @@ class AltinnFormProcessor:
         else:
             logger.info("Using default 'process_enheter()' for 'enheter'.")
             self.process_enheter()
-        for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
+        for form in glob.glob(f"{self.form_folder}/**/*.parquet", recursive=True):
             self.process_altinn_form(f"{form}")
 
     def process_enheter_suv(self) -> None:
