@@ -124,10 +124,6 @@ class AltinnFormProcessor:
         """
         pass
 
-    def get_datatype_template(self, table):
-        """Method for generating a template to insert into the 'datatyper' table."""
-        ...
-
     def get_value_with_default(self, file, field_name, default_value):
         try:
             return file.loc[file["FELTNAVN"] == field_name, "FELTVERDI"].item()
@@ -185,7 +181,6 @@ class AltinnFormProcessor:
             "aktiv": True,
         }
         skjemamottak_record = pd.DataFrame([skjemamottak_record])
-        print(skjemamottak_record)
         self.insert_or_save_data(
             data=skjemamottak_record,
             keys=[*self.periods, "skjema", "refnr"],
@@ -255,7 +250,7 @@ class AltinnFormProcessor:
         """
         logger.debug(f"Processing: {form}")
         self.data = None  # Sikre at det "nullstilles", sikkert unødvendig
-        self.data = pd.read_parquet(form)
+        self.data: pd.DataFrame = pd.read_parquet(form)
         self.process_skjemamottak()
         self.process_kontaktinfo()
         self.process_skjemadata()
