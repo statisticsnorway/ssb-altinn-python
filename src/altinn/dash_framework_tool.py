@@ -6,7 +6,6 @@ If a more diverse set of alternative data storage technologies become available,
 """
 
 import glob
-import json
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -14,7 +13,8 @@ import eimerdb as db
 import pandas as pd
 from dapla_suv_tools.suv_client import SuvClient
 
-from .flatten import isee_transform
+from .flatten import xml_transform, create_isee_filename, _read_json_meta
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,18 +42,40 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 
 
-def convert_value(x, always_string=True):
-    try:
-        # Try to convert to float
-        f = float(str(x).replace(",", "."))
-        # If successful, try to convert to int (if no decimals)
-        if f.is_integer():
-            return int(f)
-        else:
-            return f
-    except (ValueError, TypeError):
-        # If conversion fails, return as string
-        return str(x)
+def xml_to_parquet(
+    path: str, destination_folder: str, keep_contact_information: bool = False
+):
+    if not destination_folder.endswith("/"):
+        raise ValueError(
+            f"'destination_folder' path must end with '/'. Received: {destination_folder}"
+        )
+    if not path.endswith(".xml"):
+        raise ValueError(f"'path' must be path to xml file. Received: {path}")
+    if not isinstance(keep_contact_information, bool):
+        raise TypeError(
+            f"'keep_contact_information' must be type bool. Received type: {type(keep_contact_information)}"
+        )
+    data = xml_transform(path)
+    data = data.loc[
+        (data["FELTNAVN"].str.startswith("SkjemaData_"))
+        | (data["FELTNAVN"].str.startswith("Kontakt_"))
+        | (data["FELTNAVN"].str.startswith("Brukeropplevelse_"))
+        | (data["FELTNAVN"].str.startswith("Tidsbruk_"))
+        | (data["FELTNAVN"].str.startswith("InternInfo_"))
+    ]
+    if not keep_contact_information:
+        data = data.loc[~data["FELTNAVN"].str.startswith("Kontakt_kontaktPerson")]
+    data = data.reset_index(drop=True)
+    json_content = _read_json_meta(path)
+    json_content = (
+        pd.DataFrame([json_content])
+        .T.reset_index()
+        .rename(columns={"index": "FELTNAVN", 0: "FELTVERDI"})
+    )
+    data = pd.concat([data, json_content])
+    data.to_parquet(
+        f"{destination_folder}{create_isee_filename(path).replace('.csv', '.parquet')}"
+    )
 
 
 class AltinnFormProcessor:
@@ -62,7 +84,7 @@ class AltinnFormProcessor:
     Has methods for processing a single form, all forms in a folder and a method for inserting data into an eimerdb table without creating duplicates.
 
     Notes:
-        Notice that you can use inheritance to reuse parts of this class while adapting it to suit your specific needs. An example of this would be if you don't use eimerdb, you can overwrite the 'insert_into_database()' method to save the data in a way that suits your needs, while reusing the rest of the code.
+        Notice that you can use inheritance to reuse parts of this class while adapting it to suit your specific needs. An example of this would be if you don't use eimerdb, you can overwrite the 'insert_or_save_data()' method to save the data in a way that suits your needs, while reusing the rest of the code.
         If you want to process the skjemadata part of the xml using this class you can write your own implementation as a method called 'process_skjemadata()' and it will be run during the 'process_altinn_form()'
     """
 
@@ -73,11 +95,12 @@ class AltinnFormProcessor:
         path_to_form_folder: str,
         ra_number: str,  # Should maybe also support list?
         delreg_nr: str,
-        xml_period_mapping: dict[str, str],
+        parquet_period_mapping: dict[str, str],
         suv_period_mapping: dict[str, str] | None = None,
-        xml_ident_field: str = "reporteeOrgNr",
+        parquet_ident_field: str = "reporteeOrgNr",
         suv_ident_field: str | None = None,
         isee_transform_mapping=None,
+        include_contact_information: bool = False,
         process_all_forms: bool = False,
     ) -> None:
         """Instantiate the processor and connect it to the eimerdb instance.
@@ -95,18 +118,19 @@ class AltinnFormProcessor:
             process_all_forms: Boolean to decide if the insertion code should run for all forms during instantiation of the class.
 
         """
-        self.xml_ident_field = xml_ident_field
+        self.parquet_ident_field = parquet_ident_field
         self.ra_number = ra_number
         self.delreg_nr = delreg_nr
         self.suv_ident_field = suv_ident_field
         self.database_name = database_name
         self.storage_location = storage_location
-        self.xml_period_mapping = xml_period_mapping
+        self.parquet_period_mapping = parquet_period_mapping
         self.suv_period_mapping = suv_period_mapping
-        self.period_xml_fields = [x for x in xml_period_mapping.values()]
-        self.periods = [x for x in xml_period_mapping.keys()]
+        self.period_parquet_fields = [x for x in parquet_period_mapping.values()]
+        self.periods = [x for x in parquet_period_mapping.keys()]
         self.form_folder = path_to_form_folder
         self.isee_transform_mapping = isee_transform_mapping
+        self.include_contact_information = include_contact_information
 
         self.connect_to_database()
         self._is_valid()
@@ -125,104 +149,96 @@ class AltinnFormProcessor:
         """
         pass
 
-    def process_datatyper(self, year):
-        def infer_value(x, always_string=True):
-            try:
-                # Try to convert to float
-                f = float(str(x).replace(",", "."))
-                # If successful, try to convert to int (if no decimals)
-                if f.is_integer():
-                    return "int"
-                else:
-                    return "float"
-            except (ValueError, TypeError):
-                # If conversion fails, return as string
-                return "str"
+    def get_datatype_template(self, table):
+        """Method for generating a template to insert into the 'datatyper' table."""
+        ...
 
-        data = self.conn.query(
-            "SELECT * FROM skjemadata_hoved", partition_select={"aar": [year]}
+    def get_refnr(self) -> pd.DataFrame:
+        """Gets the reference number (refnr)."""
+        file = self.data
+        refnr = file.loc[file["FELTNAVN"] == "altinnReferanse"]["FELTVERDI"].item()
+        return refnr
+
+    def get_date_received(self):
+        """Gets the date_received for the Altinn form."""
+        file = self.data
+        date_received = file.loc[file["FELTNAVN"] == "altinnTidspunktLevert"][
+            "FELTVERDI"
+        ].item()
+        return date_received
+
+    def get_form_number(self):
+        """Gets the RA-number for the form."""
+        file = self.data
+        ra_number = file.loc[file["FELTNAVN"] == "InternInfo_raNummer"][
+            "FELTVERDI"
+        ].item()
+        return ra_number
+
+    def get_ident(self):
+        file = self.data
+        ident = file.loc[file["FELTNAVN"] == self.parquet_ident_field][
+            "FELTVERDI"
+        ].item()
+        return ident
+
+    def get_periods(self):
+        """Gets the period value(s) from the form."""
+        file = self.data
+        period_dict = {}
+        for period, period_name in self.period_parquet_fields.items():
+            period_dict[period] = file.loc[file["FELTNAVN"] == period_name][
+                "FELTVERDI"
+            ].item()
+        return period_dict
+
+    def process_skjemamottak(self):
+        skjemamottak_record = self.get_periods() | {
+            "skjema": self.get_form_number(),
+            "ident": self.get_ident(),
+            "refnr": self.get_refnr(),
+            "dato_mottatt": self.get_date_received(),
+            "editert": False,
+            "kommentar": "",
+            "aktiv": True,
+        }
+        skjemamottak_record = pd.DataFrame([skjemamottak_record])
+        self.insert_or_save_data(
+            data=skjemamottak_record,
+            keys=[*self.periods, "skjema", "refnr"],
+            table_name="skjemamottak",
         )
 
-        data["datatype"] = data["verdi"].apply(convert_value)
-        data = data.groupby("variabel", as_index=False)["datatype"].max()
-        data["aar"] = int(year)
-        data["tabell"] = "skjemadata_hoved"
-        data["skildring"] = ""
-        data["radnr"] = 0
-        self.insert_into_database(
-            data, [*self.periods, "tabell", "variabel"], "datatyper"
+    def process_kontaktinfo(self):
+        kontaktinfo_record = self.get_periods() | {
+            # periods
+            "skjema": self.get_form_number(),
+            "ident": self.get_ident(),
+            "refnr": self.get_refnr(),
+        }
+        kontaktinfo_record = pd.DataFrame([kontaktinfo_record])
+        self.insert_or_save_data(
+            data=kontaktinfo_record,
+            keys=[*self.periods, "skjema", "refnr"],
+            table_name="kontaktinfo",
         )
 
-    def connect_to_database(self) -> None:
-        """Method for establishing a connection to an eimerdb instance.
-
-        Can be overwritten if another database type is used.
-        """
-        self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
-
-    def insert_into_database(
-        self, data: pd.DataFrame, keys: list[str], table_name: str
-    ) -> None:
-        """Inserts dataframe contents into eimerdb instance.
-
-        Checks for duplicates on keys before inserting into table.
-
-        Args:
-            data: A dataframe containing the columns specified in the eimerdb table schema with rows to insert.
-            keys: Columns to use when checking existing data for duplicates before inserting new data.
-            table_name: The table to insert data into.
-
-        Note:
-            This method can be used to insert into other tables in the eimerdb database.
-
-        Raises:
-            ValueError: If 'existing' is not pd.DataFrame
-        """
-        existing = self.conn.query(f"SELECT * FROM {table_name}")
-        if not isinstance(existing, pd.DataFrame):
-            raise ValueError(
-                f"Value of 'existing' not pd.DataFrame. Received: {type(existing)}"
-            )
-        data = data.merge(existing[keys], on=keys, how="left", indicator=True)
-        new_data = data[data["_merge"] == "left_only"]
-        if not new_data.empty:
-            self.conn.insert(table_name, new_data)
-            logger.info(f"Inserted new row into '{table_name}'.")
-        else:
-            logger.info(f"Already exists in '{table_name}', skipping record.")
-
-    def extract_json(self) -> pd.DataFrame:
-        """Gets the reference number (refnr) and timestamp for submission from the json file."""
-        if self.json_path is None:
-            raise ValueError("'self.json_path' cannot be None.")
-        with open(
-            self.json_path,
-            encoding="utf-8",
-        ) as fil:
-            data = json.load(fil)
-
-        # Løsning 1: Hvis du kun har én post og vil ha en DataFrame med én rad:
-        json_content = pd.DataFrame([data])
-        json_content = json_content.rename(
-            columns={
-                "altinnTidspunktLevert": "dato_mottatt",
-                "altinnReferanse": "refnr",
-            }
+    def process_enheter(self):
+        enheter_record = self.get_periods() | {
+            # periods
+            "ident": self.get_ident(),
+            "skjema": self.get_form_number(),
+        }
+        enheter_record = pd.DataFrame([enheter_record])
+        self.insert_or_save_data(
+            data=enheter_record,
+            keys=[*self.periods, "ident", "skjema"],
+            table_name="enheter",
         )
-        return json_content
 
-    def process_all_forms(self) -> None:
-        """Processes all forms found in the bucket path."""
-        print("Starting")
-        if self.suv_ident_field and self.suv_period_mapping:
-            print("Using suv")
-            self.process_enheter_suv()
-        else:
-            print("Using default")
-            self.process_enheter()
-        for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
-            logger.info(f"Processing: {form}")
-            self.process_altinn_form(f"{form}")
+    def process_skjemadata(self):
+        logger.warning("No method defined for processing skjemadata.")
+        pass
 
     def process_altinn_form(self, form: str) -> None:
         """Processes a specific form.
@@ -230,58 +246,24 @@ class AltinnFormProcessor:
         Args:
             form: Path to the xml file for the form.
         """
-        self.xml_path = None  # Sikre at det "nullstilles", sikkert unødvendig
-        self.json_path = None
-        self.xml_path = form
-        self.json_path = form.replace(".xml", ".json").replace("form_", "meta_")
+        logger.debug(f"Processing: {form}")
+        self.data = None  # Sikre at det "nullstilles", sikkert unødvendig
+        self.data = pd.read_parquet(form)
         self.process_skjemamottak()
         self.process_kontaktinfo()
         self.process_skjemadata()
 
-    def process_skjemadata(self) -> None:
-        xml_content = pd.read_xml(self.xml_path)
-        data = isee_transform(self.xml_path, mapping=self.isee_transform_mapping)
-        xml_content = pd.DataFrame(
-            [
-                xml_content.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
-                    lambda col: (
-                        col.dropna().iloc[0] if not col.dropna().empty else None
-                    ),
-                    axis=0,
-                )
-            ]
-        )
-        xml_content[self.xml_ident_field] = (
-            xml_content[self.xml_ident_field].astype(int).astype(str)
-        )
-        for period_field in self.period_xml_fields:
-            xml_content[period_field] = xml_content[period_field].astype(int)
-        data = pd.concat([xml_content, data], axis=1)
-        column_renaming = {
-            "raNummer": "skjema",
-            self.xml_ident_field: "ident",
-            "VERSION_NR": "refnr",
-            "FELTNAVN": "variabel",
-            "FELTVERDI": "verdi",
-        } | {v: k for k, v in self.xml_period_mapping.items()}
-        data = data.rename(columns=column_renaming)[
-            [x for x in column_renaming.values()]
-        ]
-        data[["ident", *self.xml_period_mapping.keys()]] = data[
-            ["ident", *self.xml_period_mapping.keys()]
-        ].ffill()
-        data = data.loc[
-            ~data["variabel"].isin(
-                ["ALTINNREFERANSE", "ALTINNTIDSPUNKTLEVERT", "ANGIVER_ID"]
-            )
-        ]
-        data[self.periods] = data[self.periods].astype(int)
-
-        data["verdi"] = data["verdi"].apply(convert_value, args=[True])
-        data["verdi"] = data["verdi"].astype(str)
-        self.insert_into_database(
-            data, [*self.periods, "skjema", "refnr", "variabel"], "skjemadata_hoved"
-        )
+    def process_all_forms(self) -> None:
+        """Processes all forms found in the bucket path."""
+        logger.info("Starting processing of all forms.")
+        if self.suv_ident_field and self.suv_period_mapping:
+            logger.info("Using suv for 'enheter'.")
+            self.process_enheter_suv()
+        else:
+            logger.info("Using default 'process_enheter()' for 'enheter'.")
+            self.process_enheter()
+        for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
+            self.process_altinn_form(f"{form}")
 
     def process_enheter_suv(self) -> None:
         """This method will create a table containing information about the survey sample and which form each participant should answer.
@@ -311,179 +293,42 @@ class AltinnFormProcessor:
                 [[*suv_periods, record[self.suv_ident_field], record["skjema_type"]]],
                 columns=[*self.suv_period_mapping.keys(), "ident", "skjema"],
             )
-            self.insert_into_database(data, [*self.periods, "ident"], "enheter")
+            self.insert_or_save_data(data, [*self.periods, "ident"], "enheter")
 
-    def process_enheter(self):
-        for form in glob.glob(f"{self.form_folder}/**/form_*.xml", recursive=True):
-            logger.info(f"Processing form: {form}")
-            xml_content = pd.read_xml(form)
-            xml_content = pd.DataFrame(
-                [
-                    xml_content.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
-                        lambda col: (
-                            col.dropna().iloc[0] if not col.dropna().empty else None
-                        ),
-                        axis=0,
-                    )
-                ]
-            )
-            xml_content[self.xml_ident_field] = (
-                xml_content[self.xml_ident_field].astype(float).astype(int).astype(str)
-            )
-            xml_content = xml_content[
-                [*self.period_xml_fields, self.xml_ident_field, "raNummer"]
-            ].rename(
-                columns={"raNummer": "skjema", self.xml_ident_field: "ident"}
-                | {v: k for k, v in self.xml_period_mapping.items()}
-            )
-            self.insert_into_database(
-                xml_content,
-                keys=[*self.periods, "ident", "skjema"],
-                table_name="enheter",
-            )
+    def connect_to_database(self) -> None:
+        """Method for establishing a connection to an eimerdb instance.
 
-    def process_skjemamottak(self) -> None:
-        """Creates the table 'skjemamottak' based on altinn forms.
-
-        This table is used for keeping track of which forms has been sent from which participant. In some cases the same form is sent multiple times from the same participant, which leads to duplicated information that needs to be handled. The table created by this method provides the structure to keep track of each forms content and has variables to show which form is 'active'.
+        Can be overwritten if another database type is used.
         """
-        data = self.extract_skjemamottak()
-        self.insert_skjemamottak(data)
+        self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
 
-    def extract_skjemamottak_xml(self) -> pd.DataFrame:
-        """Extracts the necessary information for creating the 'skjemamottak' table from the xml file."""
-        if self.xml_path is None:
-            raise ValueError("'self.json_path' cannot be None.")
-        xml_content = pd.read_xml(self.xml_path)
-        xml_content = xml_content[
-            ["raNummer", self.xml_ident_field, *self.period_xml_fields]
-        ]
-        xml_content = xml_content.dropna().reset_index(drop=True)
-        for period_field in self.period_xml_fields:
-            xml_content[period_field] = xml_content[period_field].astype(int)
-        xml_content[self.xml_ident_field] = (
-            xml_content[self.xml_ident_field].astype(int).astype(str)
-        )
-        xml_content = xml_content.rename(
-            columns={
-                self.xml_ident_field: "ident",
-                "raNummer": "skjema",
-            }
-            | {v: k for k, v in self.xml_period_mapping.items()}
-        )
-        return xml_content
+    def insert_or_save_data(
+        self, data: pd.DataFrame, keys: list[str], table_name: str
+    ) -> None:
+        """Inserts dataframe contents into eimerdb instance.
 
-    def extract_skjemamottak(self) -> pd.DataFrame:
-        """Uses data from the xml file combined with the json file to create a one-row dataframe to insert into 'skjemamottak'."""
-        data = pd.concat(
-            [self.extract_skjemamottak_xml(), self.extract_json()], axis=1
-        ).reset_index(drop=True)
+        Checks for duplicates on keys before inserting into table.
 
-        data["kommentar"] = ""
-        data["aktiv"] = True
-        data["editert"] = False
+        Args:
+            data: A dataframe containing the columns specified in the eimerdb table schema with rows to insert.
+            keys: Columns to use when checking existing data for duplicates before inserting new data.
+            table_name: The table to insert data into.
 
-        data["ident"] = data["ident"].astype(str)
-        data[self.periods] = data[self.periods].astype(int)
-        data["dato_mottatt"] = pd.to_datetime(data["dato_mottatt"])
-        data["dato_mottatt"] = data["dato_mottatt"].dt.floor("s")
-        return data[
-            [
-                *self.periods,
-                "skjema",
-                "ident",
-                "refnr",
-                "dato_mottatt",
-                "editert",
-                "kommentar",
-                "aktiv",
-            ]
-        ]
+        Note:
+            This method can be used to insert into other tables in the eimerdb database or simply save the data as a file.
 
-    def insert_skjemamottak(self, data: pd.DataFrame) -> None:
-        """Inserts the new row into 'skjemamottak' table."""
-        self.insert_into_database(
-            data, [*self.periods, "skjema", "refnr"], "skjemamottak"
-        )
-
-    def process_kontaktinfo(self) -> None:
-        """Creates the table 'kontaktinfo' based on altinn forms."""
-        data = self.extract_kontaktinfo()
-        self.insert_kontaktinfo(data)
-
-    def extract_kontaktinfo(self) -> pd.DataFrame:
-        """Extracts the necessary information for creating the 'kontaktinfo' table from the xml and json files."""
-        if self.xml_path is None:
-            raise ValueError("'self.json_path' cannot be None.")
-        data = pd.read_xml(self.xml_path)
-        necessary_columns = [
-            "kontaktPersonNavn",
-            "kontaktPersonEpost",
-            "kontaktPersonTelefon",
-            "kontaktInfoBekreftet",
-            "kontaktInfoKommentar",
-            "forklarKrevendeForh",
-        ]
-        for column in necessary_columns:
-            if column not in data.columns:
-                data[column] = ""
-        data = data[
-            [
-                *self.period_xml_fields,
-                self.xml_ident_field,
-                "raNummer",
-                "kontaktPersonNavn",
-                "kontaktPersonEpost",
-                "kontaktPersonTelefon",
-                "kontaktInfoBekreftet",
-                "kontaktInfoKommentar",
-                "forklarKrevendeForh",
-            ]
-        ].rename(
-            columns={
-                self.xml_ident_field: "ident",
-                "raNummer": "skjema",
-                "kontaktPersonNavn": "kontaktperson",
-                "kontaktPersonEpost": "epost",
-                "kontaktPersonTelefon": "telefon",
-                "kontaktInfoBekreftet": "bekreftet_kontaktinfo",
-                "kontaktInfoKommentar": "kommentar_kontaktinfo",
-                "forklarKrevendeForh": "kommentar_krevende",
-            }
-            | {v: k for k, v in self.xml_period_mapping.items()}
-        )
-        data = pd.concat(
-            [data, self.extract_json().drop(columns="dato_mottatt")], axis=1
-        ).reset_index(drop=True)
-        data = pd.DataFrame(
-            [
-                data.apply(  # Collapses the dataframe into a single row consisting of the first non-NaN value in each column.
-                    lambda col: (
-                        col.dropna().iloc[0] if not col.dropna().empty else None
-                    ),
-                    axis=0,
-                )
-            ]
-        )
-        for column in ["ident", "telefon", "bekreftet_kontaktinfo"]:
-            try:
-                data[column] = data[column].astype(int)
-            except ValueError as e:
-                logger.debug(
-                    f"Something went wrong with setting {column} .astype(int)\n",
-                    exc_info=e,
-                )
-            except TypeError as e:
-                logger.debug(
-                    f"Something went wrong with setting {column} .astype(int)\n",
-                    exc_info=e,
-                )
-            data[column] = data[column].astype(str)
-        data[self.periods] = data[self.periods].astype(int)
-        return data
-
-    def insert_kontaktinfo(self, data: pd.DataFrame) -> None:
-        """Inserts the new row into 'kontaktinfo' table."""
-        self.insert_into_database(
-            data, [*self.periods, "skjema", "refnr"], "kontaktinfo"
-        )
+        Raises:
+            ValueError: If 'existing' is not pd.DataFrame
+        """
+        existing = self.conn.query(f"SELECT * FROM {table_name}")
+        if not isinstance(existing, pd.DataFrame):
+            raise ValueError(
+                f"Value of 'existing' not pd.DataFrame. Received: {type(existing)}"
+            )
+        data = data.merge(existing[keys], on=keys, how="left", indicator=True)
+        new_data = data[data["_merge"] == "left_only"]
+        if not new_data.empty:
+            self.conn.insert(table_name, new_data)
+            logger.info(f"Inserted new row into '{table_name}'.")
+        else:
+            logger.info(f"Already exists in '{table_name}', skipping record.")
