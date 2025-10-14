@@ -12,7 +12,9 @@ import eimerdb as db
 import pandas as pd
 from dapla_suv_tools.suv_client import SuvClient
 
-from .flatten import xml_transform, create_isee_filename, _read_json_meta
+from .flatten import _read_json_meta
+from .flatten import create_isee_filename
+from .flatten import xml_transform
 
 logger = logging.getLogger(__name__)
 
@@ -302,6 +304,8 @@ class AltinnFormProcessor:
 
         Can be overwritten if another database type is used.
         """
+        if self.storage_location is None or self.database_name is None:
+            raise ValueError()
         self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
 
     def insert_or_save_data(
