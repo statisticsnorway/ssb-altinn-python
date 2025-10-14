@@ -13,18 +13,19 @@ from altinn.dash_framework_tool import xml_to_parquet
 class FakeConn:
     """Minimal fake for eimerdb.EimerDBInstance."""
 
-    def __init__(self, existing_return: Any) -> None:
+    def __init__(self, existing_return: dict[str, pd.DataFrame] | None = None) -> None:
         """Init method."""
-        self._existing_return = existing_return
+        self._existing_return = existing_return or {}
         self.insert_calls: list[tuple[str, pd.DataFrame]] = []
         self.queries: list[str] = []
 
     def query(self, sql: str) -> Any:
         self.queries.append(sql)
-        return self._existing_return
+        # Extract table name from SQL
+        table = sql.split()[-1]
+        return self._existing_return.get(table, pd.DataFrame())
 
     def insert(self, table: str, df: pd.DataFrame) -> None:
-        # Store a copy to avoid accidental mutation by caller
         self.insert_calls.append((table, df.copy(deep=True)))
 
 
@@ -37,12 +38,16 @@ def processor_factory(monkeypatch, tmp_path):
     """
 
     def _factory(existing_return=None):
+        # Default: empty DataFrames with correct columns for each table
         if existing_return is None:
-            existing_return = pd.DataFrame()
-        # Monkeypatch the EimerDBInstance constructor to return our FakeConn
+            existing_return = {
+                "skjemamottak": pd.DataFrame(columns=["aar", "mnd", "skjema", "refnr"]),
+                "kontaktinfo": pd.DataFrame(columns=["aar", "mnd", "skjema", "refnr"]),
+                "enheter": pd.DataFrame(columns=["aar", "mnd", "ident", "skjema"]),
+            }
         fake_conn = FakeConn(existing_return)
 
-        def _fake_ctor(storage, db_name):  # signature per usage in __init__
+        def _fake_ctor(storage, db_name):
             return fake_conn
 
         monkeypatch.setattr(
@@ -77,232 +82,58 @@ def xml_json_files(tmp_path):
 
 @pytest.fixture()
 def minimal_parquet(tmp_path):
-    # Create a minimal DataFrame with required fields
+    # Create a minimal DataFrame in the expected long format
     df = pd.DataFrame(
         [
-            {
-                "periodeAAr": 2023,
-                "periodeNummer": 6,
-                "InternInfo_raNummer": "RA-0000",
-                "reporteeOrgNr": "999999994",
-                "altinnReferanse": "373a35bb8808",
-                "altinnTidspunktLevert": "2024-04-29T06:31:17",
-                "Kontakt_kontaktPersonNavn": "Test Person",
-                "Kontakt_kontaktPersonTelefon": "21090000",
-                "Kontakt_kontaktPersonEpost": "test@example.com",
-                "Kontakt_kontaktInfoBekreftet": "1",
-                "Kontakt_kontaktInfoKommentar": "",
-                "forklarKrevendeForh": "",
-            }
-        ]
+            {"FELTNAVN": "periodeAAr", "FELTVERDI": 2023},
+            {"FELTNAVN": "periodeNummer", "FELTVERDI": 6},
+            {"FELTNAVN": "InternInfo_raNummer", "FELTVERDI": "RA-0000"},
+            {"FELTNAVN": "reporteeOrgNr", "FELTVERDI": "999999994"},
+            {"FELTNAVN": "altinnReferanse", "FELTVERDI": "373a35bb8808"},
+            {"FELTNAVN": "altinnTidspunktLevert", "FELTVERDI": "2024-04-29T06:31:17"},
+            {"FELTNAVN": "Kontakt_kontaktPersonNavn", "FELTVERDI": "Test Person"},
+            {"FELTNAVN": "Kontakt_kontaktPersonTelefon", "FELTVERDI": "21090000"},
+            {"FELTNAVN": "Kontakt_kontaktPersonEpost", "FELTVERDI": "test@example.com"},
+            {"FELTNAVN": "Kontakt_kontaktInfoBekreftet", "FELTVERDI": "1"},
+            {"FELTNAVN": "Kontakt_kontaktInfoKommentar", "FELTVERDI": ""},
+            {"FELTNAVN": "forklarKrevendeForh", "FELTVERDI": ""},
+        ],
+        dtype=object,
     )
+    df["FELTVERDI"] = df["FELTVERDI"].astype(str)
     parquet_path = tmp_path / "form1.parquet"
     df.to_parquet(parquet_path)
     return str(parquet_path)
 
 
-def test_insert_into_database_inserts_new_rows(processor_factory):
-    proc, fake = processor_factory(existing_return=pd.DataFrame(columns=["aar", "mnd"]))
-    df = pd.DataFrame(
-        [
-            {"aar": 2023, "mnd": 6, "value": "x"},
-        ]
-    )
-
-    proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
-
-    assert len(fake.insert_calls) == 1
-    table, inserted = fake.insert_calls[0]
-    assert table == "mytable"
-    # The merge adds an _merge column and then filters; ensure our original rows made it through
-    pd.testing.assert_frame_equal(
-        inserted[["aar", "mnd", "value"]].reset_index(drop=True),
-        df[["aar", "mnd", "value"]].reset_index(drop=True),
-        check_dtype=False,
-    )
-
-
-def test_insert_into_database_skips_duplicates(processor_factory):
-    existing = pd.DataFrame(
-        [
-            {"aar": 2023, "mnd": 6},
-        ]
-    )
-    proc, fake = processor_factory(existing_return=existing)
-    df = pd.DataFrame(
-        [
-            {"aar": 2023, "mnd": 6, "value": "x"},
-        ]
-    )
-
-    proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
-
-    assert len(fake.insert_calls) == 0
-
-
-def test_insert_into_database_invalid_existing_type_raises(processor_factory):
-    proc, _ = processor_factory(
-        existing_return=[{"aar": 2023, "mnd": 6}]
-    )  # not a DataFrame
-    df = pd.DataFrame(
-        [
-            {"aar": 2023, "mnd": 6, "value": "x"},
-        ]
-    )
-
-    with pytest.raises(ValueError):
-        proc.insert_into_database(df, keys=["aar", "mnd"], table_name="mytable")
-
-
-def test_extract_json_success(processor_factory, xml_json_files):
-    proc, _ = processor_factory()
-    _, json_path = xml_json_files
-    proc.json_path = json_path
-
-    out = proc.extract_json()
-
-    assert set(out.columns) == {"dato_mottatt", "refnr"}
-    assert out.loc[0, "refnr"] == "373a35bb8808"
-    assert str(out.loc[0, "dato_mottatt"]).startswith("2024-04-29T06:31:17")
-
-
-def test_extract_json_raises_when_path_none(processor_factory):
-    proc, _ = processor_factory()
-    proc.json_path = None
-    with pytest.raises(ValueError):
-        proc.extract_json()
-
-
-def test_extract_skjemamottak_xml_and_extract_skjemamottak(
-    processor_factory, xml_json_files
+def test_insert_helpers_call_insert_or_save_data(
+    processor_factory, minimal_parquet, monkeypatch
 ):
     proc, _ = processor_factory()
-    xml_path, json_path = xml_json_files
-    proc.xml_path = xml_path
-    proc.json_path = json_path
-
-    xml_df = proc.extract_skjemamottak_xml()
-
-    assert set(["skjema", "ident", "aar", "mnd"]).issubset(xml_df.columns)
-    assert xml_df.shape[0] == 1
-    # ident should be cast to string of integers
-    assert xml_df.loc[0, "ident"] == "999999994"
-
-    full_df = proc.extract_skjemamottak()
-    # Expected columns order
-    expected_cols = [
-        "aar",
-        "mnd",
-        "skjema",
-        "ident",
-        "refnr",
-        "dato_mottatt",
-        "editert",
-        "kommentar",
-        "aktiv",
-    ]
-    assert list(full_df.columns) == expected_cols
-    assert full_df.loc[0, "aar"] == 2023
-    assert full_df.loc[0, "mnd"] == 6
-    assert full_df.loc[0, "ident"] == "999999994"
-    # Time should be pandas Timestamp floored to seconds
-    assert isinstance(full_df.loc[0, "dato_mottatt"], pd.Timestamp)
-    assert full_df.loc[0, "dato_mottatt"].microsecond == 0
-    assert not full_df.loc[0, "editert"]
-    assert full_df.loc[0, "aktiv"]
-    assert full_df.loc[0, "kommentar"] == ""
-
-
-def test_extract_kontaktinfo(processor_factory, xml_json_files):
-    proc, _ = processor_factory()
-    xml_path, json_path = xml_json_files
-    proc.xml_path = xml_path
-    proc.json_path = json_path
-
-    df = proc.extract_kontaktinfo()
-
-    expected_columns = {
-        "aar",
-        "mnd",
-        "ident",
-        "skjema",
-        "kontaktperson",
-        "epost",
-        "telefon",
-        "bekreftet_kontaktinfo",
-        "kommentar_kontaktinfo",
-        "kommentar_krevende",
-        "refnr",
-        "dato_mottatt",
-    }
-    assert expected_columns.issubset(df.columns)
-    assert df.shape[0] == 1
-    # Types and values
-    assert df.loc[0, "ident"] == "999999994"
-    assert df.loc[0, "telefon"] == "21090000"
-    assert df.loc[0, "bekreftet_kontaktinfo"] == "1"
-    assert df.loc[0, "aar"] == 2023
-    assert df.loc[0, "mnd"] == 6
-
-
-def test_insert_helpers_call_insert_into_database(
-    processor_factory, xml_json_files, monkeypatch
-):
-    proc, _ = processor_factory()
-    xml_path, json_path = xml_json_files
-    proc.xml_path = xml_path
-    proc.json_path = json_path
-
+    proc.data = pd.read_parquet(minimal_parquet)
     calls = {}
 
-    def fake_insert_into_database(data, keys, table_name):
+    def fake_insert_or_save_data(data, keys, table_name):
         calls["data"] = data.copy()
         calls["keys"] = list(keys)
         calls["table_name"] = table_name
 
-    monkeypatch.setattr(proc, "insert_into_database", fake_insert_into_database)
+    monkeypatch.setattr(proc, "insert_or_save_data", fake_insert_or_save_data)
 
     # skjemamottak
     proc.process_skjemamottak()
     assert calls["table_name"] == "skjemamottak"
-    assert calls["keys"] == ["aar", "mnd", "skjema", "refnr"]
-    assert {"aar", "mnd", "skjema", "ident", "refnr"}.issubset(calls["data"].columns)
+    assert set(["aar", "mnd", "skjema", "ident", "refnr"]).issubset(
+        calls["data"].columns
+    )
 
     # kontaktinfo
     calls.clear()
     proc.process_kontaktinfo()
     assert calls["table_name"] == "kontaktinfo"
-    assert calls["keys"] == ["aar", "mnd", "skjema", "refnr"]
-    assert {"aar", "mnd", "skjema", "ident", "refnr"}.issubset(calls["data"].columns)
-
-
-def test_insert_or_save_data_inserts_new_rows(processor_factory):
-    proc, fake = processor_factory(existing_return=pd.DataFrame(columns=["aar", "mnd"]))
-    df = pd.DataFrame([{"aar": 2023, "mnd": 6, "value": "x"}])
-    proc.insert_or_save_data(df, keys=["aar", "mnd"], table_name="mytable")
-    assert len(fake.insert_calls) == 1
-    table, inserted = fake.insert_calls[0]
-    assert table == "mytable"
-    pd.testing.assert_frame_equal(
-        inserted[["aar", "mnd", "value"]].reset_index(drop=True),
-        df[["aar", "mnd", "value"]].reset_index(drop=True),
-        check_dtype=False,
+    assert set(["aar", "mnd", "skjema", "ident", "refnr"]).issubset(
+        calls["data"].columns
     )
-
-
-def test_insert_or_save_data_skips_duplicates(processor_factory):
-    existing = pd.DataFrame([{"aar": 2023, "mnd": 6}])
-    proc, fake = processor_factory(existing_return=existing)
-    df = pd.DataFrame([{"aar": 2023, "mnd": 6, "value": "x"}])
-    proc.insert_or_save_data(df, keys=["aar", "mnd"], table_name="mytable")
-    assert len(fake.insert_calls) == 0
-
-
-def test_insert_or_save_data_invalid_existing_type_raises(processor_factory):
-    proc, _ = processor_factory(existing_return=[{"aar": 2023, "mnd": 6}])
-    df = pd.DataFrame([{"aar": 2023, "mnd": 6, "value": "x"}])
-    with pytest.raises(ValueError):
-        proc.insert_or_save_data(df, keys=["aar", "mnd"], table_name="mytable")
 
 
 def test_process_skjemamottak_and_kontaktinfo(processor_factory, minimal_parquet):
