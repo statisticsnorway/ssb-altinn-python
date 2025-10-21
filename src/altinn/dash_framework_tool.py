@@ -1,12 +1,11 @@
 """Module for processing Altinn 3 data.
 
-TODO: Make a method that takes the xml and json files and creates a parquet file containing everything necessary for insertion, in case the user doesn't want to transfer xml and json to the prod bucket.
-
 If a more diverse set of alternative data storage technologies become available, might be an idea to make AltinnFormProcessor into an abstract base class and make some more tailored variants.
 """
 
 import glob
 import logging
+from typing import Any
 
 import eimerdb as db
 import pandas as pd
@@ -21,7 +20,27 @@ logger = logging.getLogger(__name__)
 
 def xml_to_parquet(
     path: str, destination_folder: str, keep_contact_information: bool = False
-):
+) -> None:
+    """Function for taking the received xml and json files and turning them into parquet files.
+
+    Primarily intended as the preparation before running AltinnFormProcessor.
+
+    Args:
+        path (str): path to the xml file to transform. Requires that the json file is in the same folder.
+        destination_folder (str): The folder to write the parquet file to.
+        keep_contact_information (bool): Whether or not to keep contact information from the forms. Defaults to False.
+
+    Raises:
+        ValueError: If 'destination_folder' doesn't end with '/' or if 'path' doesn't end with '.xml'.
+        TypeError: If keep_contact_information is not type bool or if auto-generated filename from 'create_isee_filename(path)' is not string.
+
+    Examples:
+        def main(source_file):
+            xml_to_parquet(
+                path = source_file,
+                destination_folder = "inndata/surveyname/forms/"
+            )
+    """
     if not destination_folder.endswith("/"):
         raise ValueError(
             f"'destination_folder' path must end with '/'. Received: {destination_folder}"
@@ -50,9 +69,13 @@ def xml_to_parquet(
         .rename(columns={"index": "FELTNAVN", 0: "FELTVERDI"})
     )
     data = pd.concat([data, json_content])
-    data.to_parquet(
-        f"{destination_folder}{create_isee_filename(path).replace('.csv', '.parquet')}"
-    )
+    isee_name = create_isee_filename(path)
+    if not isinstance(isee_name, str):
+        raise TypeError(
+            f"Invalid file name. Expected string, received: {type(isee_name)}"
+        )
+    logger.info(f"Writing file as: {isee_name}")
+    data.to_parquet(f"{destination_folder}{isee_name.replace('.csv', '.parquet')}")
 
 
 class AltinnFormProcessor:
@@ -70,29 +93,28 @@ class AltinnFormProcessor:
         database_name: str,
         storage_location: str,
         path_to_form_folder: str,
-        ra_number: str,  # Should maybe also support list?
+        ra_number: str,
         delreg_nr: str,
+        parquet_ident_field: str,
         parquet_period_mapping: dict[str, str],
         suv_period_mapping: dict[str, str] | None = None,
-        parquet_ident_field: str = "reporteeOrgNr",
         suv_ident_field: str | None = None,
-        isee_transform_mapping=None,
-        include_contact_information: bool = False,
         process_all_forms: bool = False,
     ) -> None:
-        """Instantiate the processor and connect it to the eimerdb instance.
+        """Instantiate the processor and connect it to the data.
 
         Args:
-            database_name: Name of the eimerdb database to insert into.
-            storage_location: Location for the eimerdb to insert into.
-            ra_number: The form number 'RA-xxxx'.
-            delreg_nr: The SFU delregisternummer for the collection, used to populate the 'enheter' table.
-            xml_period_mapping: Mapping between the names you want for your period variables and the name of the fields in the xml files.
-            suv_period_mapping: Mapping between the names you want for your period variables and the name of the fields in the suv data.
-            path_to_form_folder: Path to the folder where the altinn form data (xml, json and pdf) are stored. Must be '/buckets/' path.
-            xml_ident_field: The name of the field in altinn form xml to use as the value for 'ident'.
-            suv_ident_field: The name of the 'ident' value in the suv...
-            process_all_forms: Boolean to decide if the insertion code should run for all forms during instantiation of the class.
+            database_name: name of the eimerdb to insert into. Can be empty string if not using eimerdb.
+            storage_location: Path to the eimerdb bucket. Can be empty string if not using eimerdb.
+            path_to_form_folder: Path to folder containing forms as parquet files.
+            ra_number: The RA-number for the Altinn form.
+            delreg_nr: The delregisternummer for the Altinn form. Required for using Suv Tools method of populating the 'enheter' table
+            parquet_period_mapping: A mapping dict with the key being the period name you want in your data and the value being the period variable name in the parquet file.
+            suv_period_mapping: A mapping dict with the key being the period name you want in your data and the value being the period name in the data from Dapla Suv Tools.
+            parquet_ident_field: The name of the ident field in the parquet file. Example: 'InternInfo_reporteeOrgNr'
+            suv_ident_field: The name of the ident variable in the data from Dapla Suv Tools.
+            process_all_forms: If True, immediately starts processing all forms contained in the supplied form_folder.
+
 
         """
         self.parquet_ident_field = parquet_ident_field
@@ -106,8 +128,6 @@ class AltinnFormProcessor:
         self.period_parquet_fields = [x for x in parquet_period_mapping.values()]
         self.periods = [x for x in parquet_period_mapping.keys()]
         self.form_folder = path_to_form_folder
-        self.isee_transform_mapping = isee_transform_mapping
-        self.include_contact_information = include_contact_information
 
         self.connect_to_database()
         self._is_valid()
@@ -126,45 +146,72 @@ class AltinnFormProcessor:
         """
         pass
 
-    def get_value_with_default(self, file, field_name, default_value):
+    def get_value_with_default(
+        self, file: pd.DataFrame, field_name: str, default_value: Any = ""
+    ) -> Any:
+        """Method for retrieving a value from the dataframe that accounts for the value not being present."""
         try:
             return file.loc[file["FELTNAVN"] == field_name, "FELTVERDI"].item()
         except (ValueError, AttributeError):
-            return ""
+            return default_value
 
-    def get_refnr(self) -> pd.DataFrame:
+    def get_refnr(self) -> str:
         """Gets the reference number (refnr)."""
         file = self.data
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         refnr = file.loc[file["FELTNAVN"] == "altinnReferanse"]["FELTVERDI"].item()
-        return refnr
+        return str(refnr)
 
-    def get_date_received(self):
+    def get_date_received(self) -> Any:  # Check returned datatype.
         """Gets the date_received for the Altinn form."""
         file = self.data
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         date_received = file.loc[
             file["FELTNAVN"] == "altinnTidspunktLevert", "FELTVERDI"
         ].iloc[0]
         date_received = pd.to_datetime(date_received).floor("s")
         return date_received
 
-    def get_form_number(self):
+    def get_form_number(self) -> str:
         """Gets the RA-number for the form."""
         file = self.data
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         ra_number = file.loc[file["FELTNAVN"] == "InternInfo_raNummer"][
             "FELTVERDI"
         ].item()
-        return ra_number
+        return str(ra_number)
 
-    def get_ident(self):
+    def get_ident(self) -> str:
+        """Gets the ident for the form."""
         file = self.data
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         ident = file.loc[file["FELTNAVN"] == self.parquet_ident_field][
             "FELTVERDI"
         ].item()
-        return ident
+        return str(ident)
 
-    def get_periods(self):
-        """Gets the period value(s) from the form."""
+    def get_periods(self) -> dict[str, int]:
+        """Gets the period value(s) from the form.
+
+        Period value is int because of limitations in eimerdb.
+        """
         file = self.data
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         period_dict = {}
         for period, period_name in self.parquet_period_mapping.items():
             period_dict[period] = int(
@@ -172,7 +219,8 @@ class AltinnFormProcessor:
             )
         return period_dict
 
-    def process_skjemamottak(self):
+    def process_skjemamottak(self) -> None:
+        """Processes the form and inserts it into the 'skjemamottak' table."""
         skjemamottak_record = self.get_periods() | {
             "skjema": self.get_form_number(),
             "ident": self.get_ident(),
@@ -182,16 +230,20 @@ class AltinnFormProcessor:
             "kommentar": "",
             "aktiv": True,
         }
-        skjemamottak_record = pd.DataFrame([skjemamottak_record])
+        skjemamottak_record_dataframe = pd.DataFrame([skjemamottak_record])
         self.insert_or_save_data(
-            data=skjemamottak_record,
+            data=skjemamottak_record_dataframe,
             keys=[*self.periods, "skjema", "refnr"],
             table_name="skjemamottak",
         )
 
-    def process_kontaktinfo(self):
+    def process_kontaktinfo(self) -> None:
+        """Processes the form and inserts it into the 'kontaktinfo' table."""
         file = self.data
-
+        if not isinstance(file, pd.DataFrame):
+            raise TypeError(
+                f"Expected self.data to be pd.DataFrame. Received: {type(file)}"
+            )
         kontaktperson = self.get_value_with_default(
             file, "Kontakt_kontaktPersonNavn", ""
         )
@@ -218,29 +270,32 @@ class AltinnFormProcessor:
             "kommentar_kontaktinfo": kommentar_kontaktinfo,
             "kommentar_krevende": kommentar_krevende,
         }
-        kontaktinfo_record = pd.DataFrame([kontaktinfo_record])
+        kontaktinfo_record_dataframe = pd.DataFrame([kontaktinfo_record])
         self.insert_or_save_data(
-            data=kontaktinfo_record,
+            data=kontaktinfo_record_dataframe,
             keys=[*self.periods, "skjema", "refnr"],
             table_name="kontaktinfo",
         )
 
-    def process_enheter(self):
+    def process_enheter(self) -> None:
+        """Processes the form and inserts it into the 'enheter' table."""
         for form in glob.glob(f"{self.form_folder}/**/*.parquet", recursive=True):
-            self.data = None  # Sikre at det "nullstilles", sikkert unødvendig
+            if self.data is not None:
+                delattr(self, "data")  # Sikre at det "nullstilles", sikkert unødvendig
             self.data = pd.read_parquet(form)
             enheter_record = self.get_periods() | {
                 "ident": self.get_ident(),
                 "skjema": self.get_form_number(),
             }
-            enheter_record = pd.DataFrame([enheter_record])
+            enheter_record_dataframe = pd.DataFrame([enheter_record])
             self.insert_or_save_data(
-                data=enheter_record,
+                data=enheter_record_dataframe,
                 keys=[*self.periods, "ident", "skjema"],
                 table_name="enheter",
             )
 
-    def process_skjemadata(self):
+    def process_skjemadata(self) -> None:
+        """Processes the form to create skjemadata. This is a placeholder function to be replaced."""
         logger.warning("No method defined for processing skjemadata.")
         pass
 
@@ -251,7 +306,8 @@ class AltinnFormProcessor:
             form: Path to the xml file for the form.
         """
         logger.debug(f"Processing: {form}")
-        self.data = None  # Sikre at det "nullstilles", sikkert unødvendig
+        if self.data is not None:
+            delattr(self, "data")  # Sikre at det "nullstilles", sikkert unødvendig
         self.data: pd.DataFrame = pd.read_parquet(form)
         self.process_skjemamottak()
         self.process_kontaktinfo()
@@ -274,7 +330,14 @@ class AltinnFormProcessor:
 
         Uses dapla-suv-tools to get information about the sample and which form(s) they are sent and inserts information into the eimerdb instance.
         """
-        # TODO: Make sure it works with surveys that have more than one form.
+        if self.ra_number is None:
+            raise TypeError(
+                f"Must be supplied with string value for ra-number. Received: {type(self.ra_number)}"
+            )
+        if not isinstance(self.suv_period_mapping, dict):
+            raise TypeError(
+                f"suv_period_mapping must be dict. Received: {type(self.suv_period_mapping)}"
+            )
         client = SuvClient()
         form_id = {
             x["id"]
