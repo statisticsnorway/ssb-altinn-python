@@ -6,8 +6,8 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from altinn.dash_framework_tool import AltinnFormProcessor
-from altinn.dash_framework_tool import xml_to_parquet
+from altinn.editing_state_tools import AltinnFormProcessor
+from altinn.editing_state_tools import xml_to_parquet
 
 
 class FakeConn:
@@ -51,13 +51,14 @@ def processor_factory(monkeypatch, tmp_path):
             return fake_conn
 
         monkeypatch.setattr(
-            "altinn.dash_framework_tool.db.EimerDBInstance", _fake_ctor, raising=True
+            "altinn.editing_state_tools.db.EimerDBInstance", _fake_ctor, raising=True
         )
         proc = AltinnFormProcessor(
             database_name="testdb",
             storage_location=str(tmp_path),
             ra_number="RA-0000",
             delreg_nr="00000",
+            parquet_ident_field="ReporteeOrgnr",
             parquet_period_mapping={"aar": "periodeAAr", "mnd": "periodeNummer"},
             suv_period_mapping={"aar": "year", "mnd": "month"},
             path_to_form_folder=str(tmp_path),
