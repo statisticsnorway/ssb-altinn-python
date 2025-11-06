@@ -1,5 +1,6 @@
 import pandas as pd
 
+from altinn import AltinnFormProcessor
 from altinn import xml_to_parquet
 
 
@@ -29,3 +30,15 @@ def test_parquet_file_data(mocker):
 
     df = captured["df"]
     assert isinstance(df, pd.DataFrame)
+
+
+def test_processor():
+    processor = AltinnFormProcessor(
+        database_name="",
+        storage_location="",
+        path_to_form_folder="",
+        ra_number="",
+        delreg_nr="",
+        parquet_ident_field="",
+        parquet_period_mapping={},
+    )
