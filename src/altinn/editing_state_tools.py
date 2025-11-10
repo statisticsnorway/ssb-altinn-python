@@ -130,7 +130,7 @@ class AltinnFormProcessor:
         self.periods = [x for x in parquet_period_mapping.keys()]
         self.form_folder = path_to_form_folder
 
-        self.data = None
+        self.data: pd.DataFrame | None = None
         self.connect_to_database()
         self._is_valid()
         if process_all_forms:
@@ -177,8 +177,7 @@ class AltinnFormProcessor:
         date_received = file.loc[
             file["FELTNAVN"] == "altinnTidspunktLevert", "FELTVERDI"
         ].iloc[0]
-        date_received = pd.to_datetime(date_received).floor("s")
-        return date_received
+        return pd.to_datetime(date_received).floor("s")
 
     def get_form_number(self) -> str:
         """Gets the RA-number for the form."""
@@ -311,7 +310,7 @@ class AltinnFormProcessor:
         logger.debug(f"Processing: {form}")
         if self.data is not None:
             delattr(self, "data")  # Sikre at det "nullstilles", sikkert unødvendig
-        self.data: pd.DataFrame = pd.read_parquet(form)
+        self.data = pd.read_parquet(form)
         self.process_skjemamottak()
         self.process_kontaktinfo()
         self.process_skjemadata()
