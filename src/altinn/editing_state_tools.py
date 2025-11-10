@@ -90,15 +90,15 @@ class AltinnFormProcessor:
 
     def __init__(
         self,
-        database_name: str,
-        storage_location: str,
-        path_to_form_folder: str,
         ra_number: str,
-        delreg_nr: str,
+        path_to_form_folder: str,
         parquet_ident_field: str,
         parquet_period_mapping: dict[str, str],
+        delreg_nr: str | None = None,
         suv_period_mapping: dict[str, str] | None = None,
         suv_ident_field: str | None = None,
+        database_name: str | None = None,
+        storage_location: str | None = None,
         process_all_forms: bool = False,
     ) -> None:
         """Instantiate the processor and connect it to the data.
@@ -115,7 +115,8 @@ class AltinnFormProcessor:
             suv_ident_field: The name of the ident variable in the data from Dapla Suv Tools.
             process_all_forms: If True, immediately starts processing all forms contained in the supplied form_folder.
 
-
+        Notes:
+            If you are not using eimerdb you do not need to supply database_name or storage_location as these are only used to connect to the eimerdb instance.
         """
         self.parquet_ident_field = parquet_ident_field
         self.ra_number = ra_number
@@ -129,6 +130,7 @@ class AltinnFormProcessor:
         self.periods = [x for x in parquet_period_mapping.keys()]
         self.form_folder = path_to_form_folder
 
+        self.data = None
         self.connect_to_database()
         self._is_valid()
         if process_all_forms:
@@ -279,6 +281,7 @@ class AltinnFormProcessor:
 
     def process_enheter(self) -> None:
         """Processes the form and inserts it into the 'enheter' table."""
+        logger.info("Processing enheter")
         for form in glob.glob(f"{self.form_folder}/**/*.parquet", recursive=True):
             if self.data is not None:
                 delattr(self, "data")  # Sikre at det "nullstilles", sikkert unødvendig
@@ -334,6 +337,10 @@ class AltinnFormProcessor:
             raise TypeError(
                 f"Must be supplied with string value for ra-number. Received: {type(self.ra_number)}"
             )
+        if self.delreg_nr is None:
+            raise TypeError(
+                f"Must be supplied with string value for delreg number. Received: {type(self.delreg_nr)}"
+            )
         if not isinstance(self.suv_period_mapping, dict):
             raise TypeError(
                 f"suv_period_mapping must be dict. Received: {type(self.suv_period_mapping)}"
@@ -368,7 +375,9 @@ class AltinnFormProcessor:
         Can be overwritten if another database type is used.
         """
         if self.storage_location is None or self.database_name is None:
-            raise ValueError()
+            raise ValueError(
+                f"Using eimerdb requires that you define storae_location and database_name. Received storage_location: {self.storage_location} and database_name: {self.database_name}"
+            )
         self.conn = db.EimerDBInstance(self.storage_location, self.database_name)
 
     def insert_or_save_data(
