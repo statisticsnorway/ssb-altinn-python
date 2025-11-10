@@ -1,10 +1,13 @@
+from typing import Any
+
 import pandas as pd
+from pytest_mock import MockerFixture
 
 from altinn import AltinnFormProcessor
 from altinn import xml_to_parquet
 
 
-def test_processor_inheritance():
+def test_processor_inheritance() -> None:
     class TestFormProcessor(AltinnFormProcessor):
         def __init__(
             self,
@@ -56,7 +59,7 @@ def test_processor_inheritance():
     ).process_all_forms()
 
 
-def test_parquet_file_data(mocker):
+def test_parquet_file_data(mocker: MockerFixture) -> None:
     """Run xml_to_parquet and capture the DataFrame passed to to_parquet()."""
     xml_path = "tests/data/form_373a35bb8808.xml"
     destination_folder = "/"
@@ -64,7 +67,7 @@ def test_parquet_file_data(mocker):
     captured = {}
 
     # Define a side effect to capture the DataFrame (`self`)
-    def capture_to_parquet(self, path, *args, **kwargs):
+    def capture_to_parquet(self: Any, path: str, *args: Any, **kwargs: Any) -> None:
         captured["df"] = self.copy()
         captured["path"] = path
 
@@ -82,15 +85,3 @@ def test_parquet_file_data(mocker):
 
     df = captured["df"]
     assert isinstance(df, pd.DataFrame)
-
-
-# def test_processor():
-#     processor = AltinnFormProcessor(
-#         database_name="",
-#         storage_location="",
-#         path_to_form_folder="",
-#         ra_number="",
-#         delreg_nr="",
-#         parquet_ident_field="",
-#         parquet_period_mapping={},
-#     )
