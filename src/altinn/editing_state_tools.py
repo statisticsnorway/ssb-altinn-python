@@ -103,20 +103,30 @@ class AltinnFormProcessor:
     ) -> None:
         """Instantiate the processor and connect it to the data.
 
+        This processor assumes you have processed your xml files using the 'xml_to_parquet' function and will most likely not work if used on another source.
+
         Args:
-            database_name: name of the eimerdb to insert into. Can be empty string if not using eimerdb.
-            storage_location: Path to the eimerdb bucket. Can be empty string if not using eimerdb.
-            path_to_form_folder: Path to folder containing forms as parquet files.
             ra_number: The RA-number for the Altinn form.
-            delreg_nr: The delregisternummer for the Altinn form. Required for using Suv Tools method of populating the 'enheter' table
-            parquet_period_mapping: A mapping dict with the key being the period name you want in your data and the value being the period variable name in the parquet file.
+            path_to_form_folder: Path to folder containing forms as parquet files.
+            parquet_ident_field: The name of the ident field in the parquet file. Example: 'InternInfo_reporteeOrgNr'.
+            parquet_period_mapping: A mapping dict with the key being the period name you want in your data and the value being the period variable name in the parquet file. Example: {"aar": "InternInfo_periodeAAr", "mnd": "InternInfo_periodeNummer"}.
+            delreg_nr: The delregisternummer for the Altinn form. Required for using Suv Tools method of populating the 'enheter' table.
             suv_period_mapping: A mapping dict with the key being the period name you want in your data and the value being the period name in the data from Dapla Suv Tools.
-            parquet_ident_field: The name of the ident field in the parquet file. Example: 'InternInfo_reporteeOrgNr'
             suv_ident_field: The name of the ident variable in the data from Dapla Suv Tools.
+            database_name: name of the eimerdb to insert into. Can be None if not using eimerdb.
+            storage_location: Path to the eimerdb bucket. Can be None if not using eimerdb.
             process_all_forms: If True, immediately starts processing all forms contained in the supplied form_folder.
 
         Notes:
             If you are not using eimerdb you do not need to supply database_name or storage_location as these are only used to connect to the eimerdb instance.
+
+        Example:
+            AltinnFormProcessor(
+                ra_number="RA-0689",
+                path_to_form_folder="tests/data",
+                parquet_ident_field="InternInfo_reporteeOrgNr",
+                parquet_period_mapping={"aar": "InternInfo_periodeAAr", "mnd": "InternInfo_periodeNummer"},
+            )
         """
         self.parquet_ident_field = parquet_ident_field
         self.ra_number = ra_number
