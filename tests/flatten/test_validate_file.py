@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from altinn import flatten
@@ -29,7 +31,9 @@ def test_validate_file_valid(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_validate_file_invalid_xml(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(flatten, "utils", DummyUtils)
     monkeypatch.setattr(flatten, "_validate_interninfo", dummy_validate_interninfo_true)
-    with pytest.raises(ValueError, match="File is not a valid XML-file: invalid.xml"):
+    with pytest.raises(
+        ValueError, match=re.escape("File is not a valid XML-file: invalid.xml")
+    ):
         flatten._validate_file("invalid.xml")
 
 
