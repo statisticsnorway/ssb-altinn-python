@@ -7,6 +7,8 @@ the user to specify how to recode old fieldnames of Altinn2 to the new names
 of Altinn3. This is done in a separate file.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -204,6 +206,38 @@ def _create_levels_col(row: Any) -> int:
         return 0
 
 
+# def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
+#     """Add a running number to the 'FELTNAVN' column.
+
+#     Args:
+#         df: The input DataFrame.
+
+#     Returns:
+#         DataFrame with added running numbers.
+#     """
+#     complex_values = set(df.loc[df["LEVELS"] > 1, "FELTNAVN"].tolist())
+
+#     if complex_values:
+#         print("\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell).")
+#         print(
+#             "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE."
+#         )
+#         print(
+#             "Disse FELTNAVN har ikke fått påkoblet løpenummer på gjentagende verdier: \033[0m"
+#         )
+#         for var in complex_values:
+#             print(var)
+
+#     for index, row in df.iterrows():
+#         if row["LEVELS"] > 0:
+#             last_counter_value = df.at[index, "COUNTER"][-1]
+#             df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
+
+#     df = df.drop(["COUNTER", "LEVELS"], axis=1)
+
+#     return df
+
+
 def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     """Add a running number to the 'FELTNAVN' column.
 
@@ -213,6 +247,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with added running numbers.
     """
+    # Finn komplekse felt — uendret fra originalen
     complex_values = set(df.loc[df["LEVELS"] > 1, "FELTNAVN"].tolist())
 
     if complex_values:
@@ -226,12 +261,27 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
         for var in complex_values:
             print(var)
 
-    for index, row in df.iterrows():
-        if row["LEVELS"] > 0:
-            last_counter_value = df.at[index, "COUNTER"][-1]
-            df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
+    # Funksjon som verifiserer og henter siste element fra COUNTER-listen
+    def get_last_counter(value: Any) -> str:
+        if not isinstance(value, list):
+            raise TypeError(
+                f"COUNTER må være en liste, men var {type(value)} med verdi {value!r}"
+            )
+        if not value:
+            return ""
+        return str(value[-1])
 
-    df = df.drop(["COUNTER", "LEVELS"], axis=1)
+    # Lag en ny kolonne med siste tellernummer
+    df["LAST_COUNTER"] = df["COUNTER"].apply(get_last_counter)
+
+    # Bare rader med LEVELS > 0 skal merkes
+    mask = df["LEVELS"] > 0
+    df.loc[mask, "FELTNAVN"] = (
+        df.loc[mask, "FELTNAVN"] + "_" + df.loc[mask, "LAST_COUNTER"].str.zfill(3)
+    )
+
+    # Rydd opp
+    df = df.drop(columns=["COUNTER", "LEVELS", "LAST_COUNTER"])
 
     return df
 
