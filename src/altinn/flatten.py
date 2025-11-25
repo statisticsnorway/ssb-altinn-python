@@ -103,16 +103,20 @@ def _validate_interninfo(file_path: str) -> bool:
     Returns:
         True if all required keys exist in the 'interninfo'
         dictionary, False otherwise.
+
+    Raises:
+        ValueError
+        If validation fails.
     """
     xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
 
-    if _check_altinn_type(file_path) == 'RA':
+    if _check_altinn_type(file_path) == "RA":
         required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
-    elif _check_altinn_type(file_path) == 'RS':
+    elif _check_altinn_type(file_path) == "RS":
         required_keys = ["enhetsOrgnr", "enhetsType", "delregNr"]
-    else :
-        raise ValueError('Ugyldig skjematype, det må være RS eller RA ')
+    else:
+        raise ValueError("Ugyldig skjematype, det må være RS eller RA ")
 
     # Safely accessing 'InternInfo'
     intern_info = xml_dict[root_element].get("InternInfo", {})
@@ -463,16 +467,16 @@ def _validate_file(file_path: str) -> None:
         raise ValueError(f"File is not a valid XML-file: {file_path}")
 
     if not _validate_interninfo(file_path):
-        if _check_altinn_type(file_path)== 'RA':
-            ident='enhetsIdent'
-        elif  _check_altinn_type(file_path)== 'RS':
-            ident='enhetsOrgnr' 
-        else : 
-            ident = 'enhetsIdent/enhetsOrgnr'
+        if _check_altinn_type(file_path) == "RA":
+            ident = "enhetsIdent"
+        elif _check_altinn_type(file_path) == "RS":
+            ident = "enhetsOrgnr"
+        else:
+            ident = "enhetsIdent/enhetsOrgnr"
         raise ValueError(
             f"File is missing one or more of the required keys in InternInfo "
             f"[{ident}, 'enhetsType', 'delregNr']: {file_path}"
-         )
+        )
 
 
 def _parse_tag_elements(
@@ -536,14 +540,14 @@ def _add_interninfo_columns(
 
     ident = {"RA": "enhetsIdent", "RS": "enhetOrgnr"}.get(
         _check_altinn_type(file_path), "innvalid"
-        )
+    )
 
     df["IDENT_NR"] = interninfo[ident]
     df["VERSION_NR"] = _extract_angiver_id(file_path)
     df["DELREG_NR"] = interninfo["delregNr"]
     df["ENHETS_TYPE"] = interninfo["enhetsType"]
 
-    df["SKJEMA_ID"] = 'RA'+ interninfo["raNummer"][2:] + "A3"
+    df["SKJEMA_ID"] = "RA" + interninfo["raNummer"][2:] + "A3"
     df = df[~df["FELTNAVN"].str.contains("@xsi:nil")].copy()
     df.loc[:, "COUNTER"] = df["FELTNAVN"].apply(_extract_counter)
     df["FELTNAVN"] = df["FELTNAVN"].str.replace(r"£.*?\$", "", regex=True).str.strip()
@@ -696,11 +700,13 @@ def create_isee_filename(file_path: str) -> str | None:
     ra_nummer_element = root.find(".//InternInfo/raNummer")
     if ra_nummer_element is not None:
         ra_nummer_value: str | None = ra_nummer_element.text
-        ra_nummer_stripped: str | Any = ra_nummer_value[2:]  # pyright: ignore[reportOptionalSubscript]
+        ra_nummer_stripped: str | Any = ra_nummer_value[
+            2:
+        ]  # pyright: ignore[reportOptionalSubscript]
 
     # find angiver_id
     angiver_id = _extract_angiver_id(file_path)
-    
+
     # Create the filename
     filename = f"RA{ra_nummer_stripped}A3_{angiver_id}.csv"
     return filename
@@ -708,17 +714,20 @@ def create_isee_filename(file_path: str) -> str | None:
 
 def _check_altinn_type(file_path: str) -> str:
     """Return the first two characters of the `raNummer` value in an Altinn XML file.
+
     This function reads a single XML file into a dictionary, extracts the root
     element, navigates to the `InternInfo` → `raNummer` field, and returns the
     first two characters of that value.
+
     Args:
         file_path (str): Path to the XML file to process.
+
     Returns:
         str: The first two characters of the `raNummer` string. If `raNummer`
         is missing or not a string, an empty string is returned.
+
     Raises:
-        KeyError: If the XML structure does not contain expected keys and the
-            absence of these keys should be considered an error.
+        KeyError: If the type code is not recognized.
     """
     xml_dict: dict[str, Any] = _read_single_xml_to_dict(str(file_path))
     root_element: str = next(iter(xml_dict.keys()))
