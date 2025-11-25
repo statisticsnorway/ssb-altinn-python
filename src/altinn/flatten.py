@@ -107,7 +107,12 @@ def _validate_interninfo(file_path: str) -> bool:
     xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
 
-    required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
+    if _check_altinn_type(file_path) == 'RA':
+        required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
+    elif _check_altinn_type(file_path) == 'RS':
+        required_keys = ["enhetsOrgnr", "enhetsType", "delregNr"]
+    else :
+        raise ValueError('Ugyldig skjematype, det må være RS eller RA ')
 
     # Safely accessing 'InternInfo'
     intern_info = xml_dict[root_element].get("InternInfo", {})
@@ -204,38 +209,6 @@ def _create_levels_col(row: Any) -> int:
         return 1
     else:
         return 0
-
-
-# def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
-#     """Add a running number to the 'FELTNAVN' column.
-
-#     Args:
-#         df: The input DataFrame.
-
-#     Returns:
-#         DataFrame with added running numbers.
-#     """
-#     complex_values = set(df.loc[df["LEVELS"] > 1, "FELTNAVN"].tolist())
-
-#     if complex_values:
-#         print("\033[91m" + "XML-inneholder kompliserte strukturer (Tabell i tabell).")
-#         print(
-#             "Det kan være nødvendig med ytterligere behandling av datagrunnlaget før innlasting til ISEE."
-#         )
-#         print(
-#             "Disse FELTNAVN har ikke fått påkoblet løpenummer på gjentagende verdier: \033[0m"
-#         )
-#         for var in complex_values:
-#             print(var)
-
-#     for index, row in df.iterrows():
-#         if row["LEVELS"] > 0:
-#             last_counter_value = df.at[index, "COUNTER"][-1]
-#             df.at[index, "FELTNAVN"] += "_" + last_counter_value.zfill(3)
-
-#     df = df.drop(["COUNTER", "LEVELS"], axis=1)
-
-#     return df
 
 
 def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
@@ -490,10 +463,16 @@ def _validate_file(file_path: str) -> None:
         raise ValueError(f"File is not a valid XML-file: {file_path}")
 
     if not _validate_interninfo(file_path):
+        if _check_altinn_type(file_path)== 'RA':
+            ident='enhetsIdent'
+        elif  _check_altinn_type(file_path)== 'RS':
+            ident='enhetsOrgnr' 
+        else : 
+            ident = 'enhetsIdent/enhetsOrgnr'
         raise ValueError(
             f"File is missing one or more of the required keys in InternInfo "
-            f"['enhetsIdent', 'enhetsType', 'delregNr']: {file_path}"
-        )
+            f"[{ident}, 'enhetsType', 'delregNr']: {file_path}"
+         )
 
 
 def _parse_tag_elements(
@@ -554,11 +533,17 @@ def _add_interninfo_columns(
         - Relies on helper functions: _extract_angiver_id, _extract_counter, and _create_levels_col.
     """
     interninfo = xml_dict[root_element]["InternInfo"]
-    df["IDENT_NR"] = interninfo["enhetsIdent"]
+
+    ident = {"RA": "enhetsIdent", "RS": "enhetOrgnr"}.get(
+        _check_altinn_type(file_path), "innvalid"
+        )
+
+    df["IDENT_NR"] = interninfo[ident]
     df["VERSION_NR"] = _extract_angiver_id(file_path)
     df["DELREG_NR"] = interninfo["delregNr"]
     df["ENHETS_TYPE"] = interninfo["enhetsType"]
-    df["SKJEMA_ID"] = interninfo["raNummer"] + "A3"
+
+    df["SKJEMA_ID"] = 'RA'+ interninfo["raNummer"][2:] + "A3"
     df = df[~df["FELTNAVN"].str.contains("@xsi:nil")].copy()
     df.loc[:, "COUNTER"] = df["FELTNAVN"].apply(_extract_counter)
     df["FELTNAVN"] = df["FELTNAVN"].str.replace(r"£.*?\$", "", regex=True).str.strip()
@@ -710,12 +695,36 @@ def create_isee_filename(file_path: str) -> str | None:
     # Find the value of raNummer
     ra_nummer_element = root.find(".//InternInfo/raNummer")
     if ra_nummer_element is not None:
-        ra_nummer_value = ra_nummer_element.text
+        ra_nummer_value: str | None = ra_nummer_element.text
+        ra_nummer_stripped: str | Any = ra_nummer_value[2:]  # pyright: ignore[reportOptionalSubscript]
 
     # find angiver_id
     angiver_id = _extract_angiver_id(file_path)
-
+    
     # Create the filename
-    filename = f"{ra_nummer_value}A3_{angiver_id}.csv"
-
+    filename = f"RA{ra_nummer_stripped}A3_{angiver_id}.csv"
     return filename
+
+
+def _check_altinn_type(file_path: str) -> str:
+    """Return the first two characters of the `raNummer` value in an Altinn XML file.
+    This function reads a single XML file into a dictionary, extracts the root
+    element, navigates to the `InternInfo` → `raNummer` field, and returns the
+    first two characters of that value.
+    Args:
+        file_path (str): Path to the XML file to process.
+    Returns:
+        str: The first two characters of the `raNummer` string. If `raNummer`
+        is missing or not a string, an empty string is returned.
+    Raises:
+        KeyError: If the XML structure does not contain expected keys and the
+            absence of these keys should be considered an error.
+    """
+    xml_dict: dict[str, Any] = _read_single_xml_to_dict(str(file_path))
+    root_element: str = next(iter(xml_dict.keys()))
+    interninfo: dict[str, Any] = xml_dict[root_element].get("InternInfo", {})
+    ra_nummer: str = interninfo.get("raNummer", "")
+    # Ensure type safety
+    if not isinstance(ra_nummer, str):
+        return ""
+    return ra_nummer[:2]
