@@ -105,8 +105,7 @@ def _validate_interninfo(file_path: str) -> bool:
         dictionary, False otherwise.
 
     Raises:
-        ValueError
-        If validation fails.
+        ValueError: If the Altinn type is invalid (must be 'RS' or 'RA').
     """
     xml_dict = _read_single_xml_to_dict(file_path)
     root_element = next(iter(xml_dict.keys()))
@@ -725,9 +724,6 @@ def _check_altinn_type(file_path: str) -> str:
     Returns:
         str: The first two characters of the `raNummer` string. If `raNummer`
         is missing or not a string, an empty string is returned.
-
-    Raises:
-        KeyError: If the type code is not recognized.
     """
     xml_dict: dict[str, Any] = _read_single_xml_to_dict(str(file_path))
     root_element: str = next(iter(xml_dict.keys()))
