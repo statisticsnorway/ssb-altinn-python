@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 from collections.abc import MutableMapping
 from datetime import datetime
 from typing import Any
+from xml.etree.ElementTree import Element
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -462,20 +463,27 @@ def _validate_file(file_path: str) -> None:
         ValueError: If the file is not a valid XML file.
         ValueError: If the file does not contain all required InternInfo keys.
     """
-    if not utils.is_valid_xml(file_path):
-        raise ValueError(f"File is not a valid XML-file: {file_path}")
+    
+    try:
+        if not utils.is_valid_xml(file_path):
+            raise ValueError(f"{file_path} is not a valid XML-file")
+    except Exception as e:
+        raise ValueError(f"XML validation failed: {e}") from e
 
-    if not _validate_interninfo(file_path):
-        if _check_altinn_type(file_path) == "RA":
-            ident = "enhetsIdent"
-        elif _check_altinn_type(file_path) == "RS":
-            ident = "enhetsOrgnr"
-        else:
-            ident = "enhetsIdent/enhetsOrgnr"
-        raise ValueError(
-            f"File is missing one or more of the required keys in InternInfo "
-            f"[{ident}, 'enhetsType', 'delregNr']: {file_path}"
-        )
+    # InternInfo validation
+    try:
+        if not _validate_interninfo(file_path):
+            altinn_type = _check_altinn_type(file_path)
+            if altinn_type == "RA":
+                expected_ident = "enhetsIdent"
+            elif altinn_type == "RS":
+                expected_ident = "enhetsOrgnr"
+            else:
+                expected_ident = "enhetsIdent/enhetsOrgnr"
+            raise ValueError(f"Missing required keys in InternInfo: {expected_ident}")
+    except Exception as e:
+        raise ValueError(f"InternInfo validation failed: {e}") from e
+
 
 
 def _parse_tag_elements(
@@ -696,12 +704,13 @@ def create_isee_filename(file_path: str) -> str | None:
     root = ET.fromstring(xml_content)
 
     # Find the value of raNummer
-    ra_nummer_element = root.find(".//InternInfo/raNummer")
-    if ra_nummer_element is not None:
-        ra_nummer_value: str | None = ra_nummer_element.text
-        ra_nummer_stripped: str | Any = ra_nummer_value[
-            2:
-        ]  # pyright: ignore[reportOptionalSubscript]
+    ra_nummer_element: Element[str] | None = root.find(".//InternInfo/raNummer")
+    
+    if ra_nummer_element is None or ra_nummer_element.text is None:
+        return None
+
+    ra_nummer_value: str = ra_nummer_element.text
+    ra_nummer_stripped: str = ra_nummer_value[2:]  # Safe now
 
     # find angiver_id
     angiver_id = _extract_angiver_id(file_path)
