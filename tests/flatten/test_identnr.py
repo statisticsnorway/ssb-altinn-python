@@ -1,3 +1,7 @@
+from collections.abc import Callable
+from typing import Any
+from typing import Literal
+
 import pandas as pd
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -14,16 +18,16 @@ def dummy_extract_angiver_id(file_path: str) -> str:
     return "12345"
 
 
-def dummy_extract_counter(value: str):
+def dummy_extract_counter(value: str) -> list[Any]:
     return []
 
 
-def dummy_create_levels_col(row):
+def dummy_create_levels_col(row: dict[str, str]) -> Literal[0]:
     return 0
 
 
 @pytest.fixture
-def patch_helpers(monkeypatch: MonkeyPatch):
+def patch_helpers(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("altinn.flatten._check_altinn_type", dummy_check_altinn_type)
     monkeypatch.setattr("altinn.flatten._extract_angiver_id", dummy_extract_angiver_id)
     monkeypatch.setattr("altinn.flatten._extract_counter", dummy_extract_counter)
@@ -31,7 +35,7 @@ def patch_helpers(monkeypatch: MonkeyPatch):
 
 
 @pytest.fixture
-def sample_xml_dict():
+def sample_xml_dict() -> dict[str, dict[str, dict[str, str]]]:
     return {
         "Root": {
             "InternInfo": {
@@ -45,7 +49,9 @@ def sample_xml_dict():
     }
 
 
-def test_ident_nr_column(patch_helpers, sample_xml_dict):
+def test_ident_nr_column(
+    patch_helpers: Callable[..., None], sample_xml_dict: dict[str, Any]
+) -> None:
     df = pd.DataFrame({"FELTNAVN": ["field1", "field2"]})
     result = _add_interninfo_columns(df, sample_xml_dict, "Root", "dummy_path.xml")
 
@@ -54,7 +60,9 @@ def test_ident_nr_column(patch_helpers, sample_xml_dict):
     assert result["IDENT_NR"].tolist() == expected
 
 
-def test_ident_nr_column_rs(monkeypatch, sample_xml_dict):
+def test_ident_nr_column_rs(
+    monkeypatch: pytest.MonkeyPatch, sample_xml_dict: dict[str, Any]
+) -> None:
     # Patch _check_altinn_type to return "RS"
     monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda x: "RS")
     monkeypatch.setattr("altinn.flatten._extract_angiver_id", lambda x: "12345")
@@ -69,7 +77,9 @@ def test_ident_nr_column_rs(monkeypatch, sample_xml_dict):
     assert result["IDENT_NR"].tolist() == expected
 
 
-def test_ident_nr_column_invalid(monkeypatch, sample_xml_dict):
+def test_ident_nr_column_invalid(
+    monkeypatch: pytest.MonkeyPatch, sample_xml_dict: dict[str, Any]
+) -> None:
     # Patch _check_altinn_type to return something invalid
     monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda x: "XX")
     monkeypatch.setattr("altinn.flatten._extract_angiver_id", lambda x: "12345")

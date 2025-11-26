@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -6,9 +7,9 @@ from altinn.flatten import _validate_file
 
 
 @pytest.fixture
-def sample_path(tmp_path):
+def sample_path(tmp_path: Path) -> str:
     """Create a dummy XML file path for tests that need a real file path."""
-    file_path = tmp_path / "test.xml"
+    file_path = tmp_path / "test.xml"  # pyright: ignore[reportOperatorIssue]
     file_path.write_text("<root></root>")
     return str(file_path)
 
@@ -18,7 +19,7 @@ def sample_path(tmp_path):
 #
 
 
-def test_validate_file_success(sample_path):
+def test_validate_file_success(sample_path: str) -> None:
     """Valid XML + valid InternInfo → no exception."""
     with (
         patch("altinn.flatten.utils.is_valid_xml", return_value=True),
@@ -32,7 +33,7 @@ def test_validate_file_success(sample_path):
 #
 
 
-def test_invalid_xml_flagged_by_validator(sample_path):
+def test_invalid_xml_flagged_by_validator(sample_path: str) -> None:
     """is_valid_xml returns False → ValueError."""
     with patch("altinn.flatten.utils.is_valid_xml", return_value=False):
         with pytest.raises(ValueError) as exc:
@@ -45,7 +46,7 @@ def test_invalid_xml_flagged_by_validator(sample_path):
 #     with patch("altinn.flatten.utils.is_valid_xml", side_effect=Exception("boom")):
 #         with pytest.raises(Exception):
 #             _validate_file(sample_path)
-def test_is_valid_xml_raises_error(sample_path):
+def test_is_valid_xml_raises_error(sample_path: str) -> None:
     """If utils.is_valid_xml raises ANY exception → propagate as ValueError."""
     with patch("altinn.flatten.utils.is_valid_xml", side_effect=Exception("boom")):
         with pytest.raises(ValueError):
@@ -67,7 +68,9 @@ def test_is_valid_xml_raises_error(sample_path):
         (123, "enhetsIdent/enhetsOrgnr"),  # numeric case
     ],
 )
-def test_missing_interninfo_keys(sample_path, altinn_type, expected_ident):
+def test_missing_interninfo_keys(
+    sample_path: str, altinn_type: str, expected_ident: str
+) -> None:
     """Missing InternInfo should raise ValueError and reference correct ident."""
     with (
         patch("altinn.flatten.utils.is_valid_xml", return_value=True),
@@ -91,7 +94,7 @@ def test_missing_interninfo_keys(sample_path, altinn_type, expected_ident):
 #     ):
 #         with pytest.raises(Exception):
 #             _validate_file(sample_path)
-def test_validate_interninfo_raises(sample_path):
+def test_validate_interninfo_raises(sample_path: str) -> None:
     """If _validate_interninfo raises, it should propagate."""
     with (
         patch("altinn.flatten.utils.is_valid_xml", return_value=True),
@@ -106,21 +109,21 @@ def test_validate_interninfo_raises(sample_path):
 #
 
 
-def test_empty_file_path():
+def test_empty_file_path() -> None:
     """Empty path should be treated as invalid XML."""
     with patch("altinn.flatten.utils.is_valid_xml", return_value=False):
         with pytest.raises(ValueError):
             _validate_file("")
 
 
-def test_nonexistent_file():
+def test_nonexistent_file() -> None:
     """Nonexistent path: depends on is_valid_xml behavior; we simulate failure."""
     with patch("altinn.flatten.utils.is_valid_xml", return_value=False):
         with pytest.raises(ValueError):
             _validate_file("does_not_exist.xml")
 
 
-def test_directory_instead_of_file(tmp_path):
+def test_directory_instead_of_file(tmp_path: Path) -> None:
     """Passing a directory path should fail XML validation."""
     dir_path = str(tmp_path)
     with patch("altinn.flatten.utils.is_valid_xml", return_value=False):
@@ -133,7 +136,7 @@ def test_directory_instead_of_file(tmp_path):
 #
 
 
-def test_empty_xml_file(tmp_path):
+def test_empty_xml_file(tmp_path: Path) -> None:
     """Valid file path but empty content → assume is_valid_xml returns False."""
     file_path = tmp_path / "empty.xml"
     file_path.write_text("")
@@ -142,7 +145,7 @@ def test_empty_xml_file(tmp_path):
             _validate_file(str(file_path))
 
 
-def test_malformed_xml_file(tmp_path):
+def test_malformed_xml_file(tmp_path: Path) -> None:
     """Malformed XML should be caught by is_valid_xml."""
     file_path = tmp_path / "bad.xml"
     file_path.write_text("<root><broken></root>")
@@ -157,7 +160,7 @@ def test_malformed_xml_file(tmp_path):
 #
 
 
-def test_interninfo_valid_but_altinn_type_weird(sample_path):
+def test_interninfo_valid_but_altinn_type_weird(sample_path: str) -> None:
     """If InternInfo is valid, _check_altinn_type should not affect success."""
     with (
         patch("altinn.flatten.utils.is_valid_xml", return_value=True),

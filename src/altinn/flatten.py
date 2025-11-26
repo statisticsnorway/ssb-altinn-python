@@ -463,7 +463,6 @@ def _validate_file(file_path: str) -> None:
         ValueError: If the file is not a valid XML file.
         ValueError: If the file does not contain all required InternInfo keys.
     """
-    
     try:
         if not utils.is_valid_xml(file_path):
             raise ValueError(f"{file_path} is not a valid XML-file")
@@ -483,7 +482,6 @@ def _validate_file(file_path: str) -> None:
             raise ValueError(f"Missing required keys in InternInfo: {expected_ident}")
     except Exception as e:
         raise ValueError(f"InternInfo validation failed: {e}") from e
-
 
 
 def _parse_tag_elements(
@@ -705,7 +703,7 @@ def create_isee_filename(file_path: str) -> str | None:
 
     # Find the value of raNummer
     ra_nummer_element: Element[str] | None = root.find(".//InternInfo/raNummer")
-    
+
     if ra_nummer_element is None or ra_nummer_element.text is None:
         return None
 
@@ -737,8 +735,9 @@ def _check_altinn_type(file_path: str) -> str:
     xml_dict: dict[str, Any] = _read_single_xml_to_dict(str(file_path))
     root_element: str = next(iter(xml_dict.keys()))
     interninfo: dict[str, Any] = xml_dict[root_element].get("InternInfo", {})
-    ra_nummer: str = interninfo.get("raNummer", "")
+    ra_nummer: str | None = interninfo.get("raNummer", "")
     # Ensure type safety
     if not isinstance(ra_nummer, str):
         return ""
+
     return ra_nummer[:2]
