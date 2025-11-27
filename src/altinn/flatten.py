@@ -114,7 +114,7 @@ def _validate_interninfo(file_path: str) -> bool:
     if _check_altinn_type(file_path) == "RA":
         required_keys = ["enhetsIdent", "enhetsType", "delregNr"]
     elif _check_altinn_type(file_path) == "RS":
-        required_keys = ["enhetsOrgnr", "enhetsType", "delregNr"]
+        required_keys = ["enhetsOrgNr", "enhetsType", "delregNr"]
     else:
         raise ValueError("Ugyldig skjematype, det må være RS eller RA ")
 
@@ -476,9 +476,9 @@ def _validate_file(file_path: str) -> None:
             if altinn_type == "RA":
                 expected_ident = "enhetsIdent"
             elif altinn_type == "RS":
-                expected_ident = "enhetsOrgnr"
+                expected_ident = "enhetsOrgNr"
             else:
-                expected_ident = "enhetsIdent/enhetsOrgnr"
+                expected_ident = "enhetsIdent/enhetsOrgNr"
             raise ValueError(f"Missing required keys in InternInfo: {expected_ident}")
     except Exception as e:
         raise ValueError(f"InternInfo validation failed: {e}") from e
@@ -543,7 +543,7 @@ def _add_interninfo_columns(
     """
     interninfo = xml_dict[root_element]["InternInfo"]
 
-    ident = {"RA": "enhetsIdent", "RS": "enhetOrgnr"}.get(
+    ident = {"RA": "enhetsIdent", "RS": "enhetsOrgNr"}.get(
         _check_altinn_type(file_path), "innvalid"
     )
 
