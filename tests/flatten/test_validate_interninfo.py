@@ -20,7 +20,7 @@ def mock_xml_rs() -> dict[str, dict[str, dict[str, str]]]:
     return {
         "Root": {
             "InternInfo": {
-                "enhetsOrgnr": "987654321",
+                "enhetsOrgNr": "987654321",
                 "enhetsType": "XYZ",
                 "delregNr": "002",
             }
@@ -68,7 +68,7 @@ def test_validate_interninfo_rs_missing_key(
 ) -> None:
     incomplete_xml = mock_xml_rs.copy()
     incomplete_xml["Root"] = incomplete_xml["Root"].copy()
-    incomplete_xml["Root"]["InternInfo"] = {"enhetsOrgnr": "987"}  # Missing 2 keys
+    incomplete_xml["Root"]["InternInfo"] = {"enhetsOrgNr": "987"}  # Missing 2 keys
 
     with (
         patch("altinn.flatten._read_single_xml_to_dict", return_value=incomplete_xml),

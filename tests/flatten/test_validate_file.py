@@ -62,10 +62,10 @@ def test_is_valid_xml_raises_error(sample_path: str) -> None:
     "altinn_type, expected_ident",
     [
         ("RA", "enhetsIdent"),
-        ("RS", "enhetsOrgnr"),
-        ("XYZ", "enhetsIdent/enhetsOrgnr"),  # unexpected value
-        (None, "enhetsIdent/enhetsOrgnr"),  # None case
-        (123, "enhetsIdent/enhetsOrgnr"),  # numeric case
+        ("RS", "enhetsOrgNr"),
+        ("XYZ", "enhetsIdent/enhetsOrgNr"),  # unexpected value
+        (None, "enhetsIdent/enhetsOrgNr"),  # None case
+        (123, "enhetsIdent/enhetsOrgNr"),  # numeric case
     ],
 )
 def test_missing_interninfo_keys(

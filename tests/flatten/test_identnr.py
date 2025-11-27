@@ -40,7 +40,7 @@ def sample_xml_dict() -> dict[str, dict[str, dict[str, str]]]:
         "Root": {
             "InternInfo": {
                 "enhetsIdent": "ENH123",
-                "enhetOrgnr": "ORG456",
+                "enhetsOrgNr": "ORG456",
                 "delregNr": "DR789",
                 "enhetsType": "TYPE001",
                 "raNummer": "RA321",
@@ -72,7 +72,7 @@ def test_ident_nr_column_rs(
     df = pd.DataFrame({"FELTNAVN": ["field1", "field2"]})
     result = _add_interninfo_columns(df, sample_xml_dict, "Root", "dummy_path.xml")
 
-    # _check_altinn_type returns "RS", so IDENT_NR should be enhetOrgnr
+    # _check_altinn_type returns "RS", so IDENT_NR should be enhetsOrgNr
     expected = ["ORG456", "ORG456"]
     assert result["IDENT_NR"].tolist() == expected
 
