@@ -12,7 +12,7 @@ import altinn.utils as utils
 from altinn.flatten import create_isee_filename
 
 
-def generate_sample_xml(ra_nummer: str = "12345") -> str:
+def generate_sample_xml(ra_nummer: str = "RS345") -> str:
     root = Element("Root")
     intern_info = SubElement(root, "InternInfo")
     ra_nummer_el = SubElement(intern_info, "raNummer")
@@ -34,7 +34,7 @@ def mock_file_client(monkeypatch: MonkeyPatch) -> None:
 @pytest.mark.usefixtures("mock_file_client")
 def test_create_isee_filename_gcs() -> None:
     file_path = "gs://path/to/form_12345.xml"
-    expected_filename = "12345A3_12345.csv"
+    expected_filename = "RA345A3_12345.csv"
     assert create_isee_filename(file_path) == expected_filename
 
 
@@ -43,5 +43,5 @@ def test_create_isee_filename_local(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(utils, "is_gcs", lambda x: False)
     xml_content = generate_sample_xml()
     monkeypatch.setattr("builtins.open", mock_open(read_data=xml_content))
-    expected_filename = "12345A3_12345.csv"
+    expected_filename = "RA345A3_12345.csv"
     assert create_isee_filename(file_path) == expected_filename

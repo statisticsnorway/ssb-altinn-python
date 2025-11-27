@@ -29,11 +29,17 @@ def dummy_create_levels_col(row: dict[str, Any]) -> int:
         return 0
 
 
+def dummy_check_altinn_type(file_path: str) -> str:
+    # Ensure the tested function selects "enhetsIdent"
+    return "RA"
+
+
 @pytest.fixture
 def patch_helpers(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr("altinn.flatten._extract_angiver_id", dummy_extract_angiver_id)
     monkeypatch.setattr("altinn.flatten._extract_counter", dummy_extract_counter)
     monkeypatch.setattr("altinn.flatten._create_levels_col", dummy_create_levels_col)
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", dummy_check_altinn_type)
 
 
 @pytest.fixture
@@ -62,6 +68,7 @@ def test_add_interninfo_columns_basic(
     result: pd.DataFrame = _add_interninfo_columns(
         df, sample_xml_dict, "Root", "dummy_path.xml"
     )
+
     # Check columns added
     assert set(
         [
@@ -74,18 +81,23 @@ def test_add_interninfo_columns_basic(
             "LEVELS",
         ]
     ).issubset(result.columns)
+
     # Check values
     assert (result["IDENT_NR"] == "ENH123").all()
     assert (result["DELREG_NR"] == "DR456").all()
     assert (result["ENHETS_TYPE"] == "TYPE789").all()
     assert (result["SKJEMA_ID"] == "RA321A3").all()
     assert (result["VERSION_NR"] == "12345").all()
+
     # Check FELTNAVN cleaned
     assert all("£" not in v for v in result["FELTNAVN"])
+
     # Check FELTVERDI cleaned
     assert all("\n" not in v for v in result["FELTVERDI"])
+
     # Check @xsi:nil row removed
     assert not any(result["FELTNAVN"].str.contains("@xsi:nil"))
+
     # Check COUNTER and LEVELS
     assert result.loc[result["FELTNAVN"] == "field1", "COUNTER"].iloc[0] == ["1"]
     assert result.loc[result["FELTNAVN"] == "field2", "COUNTER"].iloc[0] == ["2", "1"]
@@ -102,6 +114,7 @@ def test_add_interninfo_columns_empty_df(
     )
     assert isinstance(result, pd.DataFrame)
     assert result.empty
+
     # Should still have the new columns
     for col in [
         "IDENT_NR",
