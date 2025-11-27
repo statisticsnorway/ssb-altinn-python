@@ -13,6 +13,7 @@ import json
 import os
 import re
 import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element
 from collections.abc import MutableMapping
 from datetime import datetime
 from typing import Any
@@ -702,7 +703,7 @@ def create_isee_filename(file_path: str) -> str | None:
     root = ET.fromstring(xml_content)
 
     # Find the value of raNummer
-    ra_nummer_element: Element[str] | None = root.find(".//InternInfo/raNummer")
+    ra_nummer_element: Element | None = root.find(".//InternInfo/raNummer")
 
     if ra_nummer_element is None or ra_nummer_element.text is None:
         return None
