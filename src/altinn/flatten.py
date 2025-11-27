@@ -13,7 +13,6 @@ import json
 import os
 import re
 import xml.etree.ElementTree as ET
-from xml.etree.ElementTree import Element
 from collections.abc import MutableMapping
 from datetime import datetime
 from typing import Any
