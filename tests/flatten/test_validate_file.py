@@ -86,14 +86,6 @@ def test_missing_interninfo_keys(
         assert "required keys in InternInfo" in msg
 
 
-# def test_validate_interninfo_raises(sample_path):
-#     """If _validate_interninfo raises, it should propagate."""
-#     with (
-#         patch("altinn.flatten.utils.is_valid_xml", return_value=True),
-#         patch("altinn.flatten._validate_interninfo", side_effect=Exception("x")),
-#     ):
-#         with pytest.raises(Exception):
-#             _validate_file(sample_path)
 def test_validate_interninfo_raises(sample_path: str) -> None:
     """If _validate_interninfo raises, it should propagate."""
     with (
