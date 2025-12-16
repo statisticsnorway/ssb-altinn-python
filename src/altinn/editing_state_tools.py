@@ -407,13 +407,23 @@ class AltinnFormProcessor:
         Raises:
             ValueError: If 'existing' is not pd.DataFrame
         """
-        existing = self.conn.query(f"SELECT * FROM {table_name}")
-        if not isinstance(existing, pd.DataFrame):
-            raise ValueError(
-                f"Value of 'existing' not pd.DataFrame. Received: {type(existing)}"
-            )
-        data = data.merge(existing[keys], on=keys, how="left", indicator=True)
-        new_data = data[data["_merge"] == "left_only"]
+        try:
+            existing = self.conn.query(f"SELECT * FROM {table_name}")
+            data = data.merge(existing[keys], on=keys, how="left", indicator=True)
+            logger.debug(data)
+            new_data = data[data["_merge"] == "left_only"]
+            if not isinstance(existing, pd.DataFrame):
+                raise ValueError(
+                    f"Value of 'existing' not pd.DataFrame. Received: {type(existing)}"
+                )
+        except (
+            ValueError
+        ) as e:  # Handle eimerdb bug if trying to insert first record into eimerdb
+            if str(e) == "max() arg is an empty sequence":
+                new_data = data
+            else:
+                raise  # re-raise unexpected errors
+        logger.debug("Trying insert.")
         if not new_data.empty:
             self.conn.insert(table_name, new_data)
             logger.info(f"Inserted new row into '{table_name}'.")
