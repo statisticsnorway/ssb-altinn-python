@@ -4,8 +4,8 @@ from xml.etree.ElementTree import Element
 from xml.etree.ElementTree import SubElement
 from xml.etree.ElementTree import tostring
 
+import gcsfs
 import pytest
-from dapla import FileClient
 from pytest import MonkeyPatch
 
 import altinn.utils as utils
@@ -28,7 +28,7 @@ def mock_file_client(monkeypatch: MonkeyPatch) -> None:
             return mock_open(read_data=xml_content)()
 
     monkeypatch.setattr(utils, "is_gcs", lambda x: True)
-    monkeypatch.setattr(FileClient, "get_gcs_file_system", MockFileSystem)
+    monkeypatch.setattr(gcsfs, "GCSFileSystem", MockFileSystem)
 
 
 @pytest.mark.usefixtures("mock_file_client")

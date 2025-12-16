@@ -3,8 +3,8 @@
 from unittest.mock import MagicMock
 from unittest.mock import mock_open
 
+import gcsfs
 from _pytest.monkeypatch import MonkeyPatch
-from dapla import FileClient
 
 from altinn.file import FileInfo
 
@@ -47,7 +47,7 @@ class TestFileInfo:
         file_client_mock = MagicMock()
         file_client_mock.cat_file.side_effect = mock_cat_file
         get_gcs_file_system_mock = MagicMock(return_value=file_client_mock)
-        monkeypatch.setattr(FileClient, "get_gcs_file_system", get_gcs_file_system_mock)
+        monkeypatch.setattr(gcsfs, "GCSFileSystem", get_gcs_file_system_mock)
 
         # Create an instance of FileInfo for a GCS file and call pretty_print on it
         gcs_file_info = FileInfo("gs://path/to/gcs_file.xml")

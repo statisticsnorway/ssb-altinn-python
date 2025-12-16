@@ -19,9 +19,9 @@ from typing import Any
 from xml.etree.ElementTree import Element
 from zoneinfo import ZoneInfo
 
+import gcsfs
 import pandas as pd
 import xmltodict
-from dapla import FileClient
 
 from altinn import utils
 
@@ -144,7 +144,7 @@ def _read_single_xml_to_dict(file_path: str) -> dict[str, Any]:
         A dictionary with data from a XML
     """
     if utils.is_gcs(file_path):
-        fs = FileClient.get_gcs_file_system()
+        fs = gcsfs.GCSFileSystem()
 
         with fs.open(file_path, mode="r") as xml_file:
             data_dict = xmltodict.parse(xml_file.read())
@@ -427,7 +427,7 @@ def _read_json_meta(file_path: str) -> Any | None:
 
     if utils.is_gcs(json_file_path):
 
-        fs = FileClient.get_gcs_file_system()
+        fs = gcsfs.GCSFileSystem()
 
         if fs.exists(json_file_path):
             try:
@@ -690,7 +690,7 @@ def create_isee_filename(file_path: str) -> str | None:
     """
     # Read XML-file
     if utils.is_gcs(file_path):
-        fs = FileClient.get_gcs_file_system()
+        fs = gcsfs.GCSFileSystem()
         with fs.open(file_path, mode="r") as f:
             xml_content = f.read()
 

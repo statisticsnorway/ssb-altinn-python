@@ -4,8 +4,8 @@ import os
 from typing import Any
 from xml.etree.ElementTree import Element
 
+import gcsfs
 import pandas as pd
-from dapla import FileClient
 from defusedxml import ElementTree
 
 from .utils import is_gcs
@@ -94,7 +94,7 @@ class ParseSingleXml:
         Returns:
             Element: The root Element of the parsed XML file.
         """
-        fs = FileClient.get_gcs_file_system()
+        fs = gcsfs.GCSFileSystem()
         with fs.open(self.file_path, mode="r") as f:
             single_xml = f.read()
         return ElementTree.fromstring(single_xml)  # type: ignore[no-any-return]

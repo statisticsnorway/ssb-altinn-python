@@ -2,7 +2,7 @@
 
 import os
 
-from dapla import FileClient
+import gcsfs
 from defusedxml.ElementTree import ParseError
 from defusedxml.minidom import parseString
 
@@ -38,7 +38,7 @@ class FileInfo:
             The content of the file as string.
         """
         if is_gcs(self.original_file_path):
-            fs = FileClient.get_gcs_file_system()
+            fs = gcsfs.GCSFileSystem()
             return fs.cat_file(self.original_file_path)  # type: ignore[no-any-return]
         else:
             with open(self.expanded_file_path) as f:
