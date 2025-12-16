@@ -26,7 +26,7 @@ def test_read_single_xml_to_dict_local(mock_xml_data: str) -> None:
 # Test reading from a GCS location
 def test_read_single_xml_to_dict_gcs(mock_xml_data: str) -> None:
     # Mocking GCS interactions
-    with patch("altinn.flatten.FileClient.get_gcs_file_system") as mocked_gcs_client:
+    with patch("altinn.flatten.gcsfs.GCSFileSystem") as mocked_gcs_client:
         mocked_fs = mocked_gcs_client.return_value
         mocked_fs.open = mock_open(read_data=mock_xml_data)
         with patch("altinn.flatten.utils.is_gcs") as mocked_is_gcs:

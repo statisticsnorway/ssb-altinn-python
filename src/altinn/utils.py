@@ -2,7 +2,7 @@
 
 import os
 
-from dapla import FileClient
+import gcsfs
 from defusedxml.ElementTree import ParseError
 from defusedxml.minidom import parseString
 
@@ -29,7 +29,7 @@ def is_valid_xml(file_path: str) -> bool:
         bool: True if the XML is valid, False otherwise.
     """
     if is_gcs(file_path):
-        fs = FileClient.get_gcs_file_system()
+        fs = gcsfs.GCSFileSystem()
         try:
             # Read and parse the file from Google Cloud Storage
             parseString(fs.cat_file(file_path))
