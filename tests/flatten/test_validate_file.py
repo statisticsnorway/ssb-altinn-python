@@ -54,49 +54,6 @@ def test_is_valid_xml_raises_error(sample_path: str) -> None:
 
 
 #
-# --- MISSING INTERNINFO KEYS ---
-#
-
-
-@pytest.mark.parametrize(
-    "altinn_type, expected_ident",
-    [
-        ("RA", "enhetsIdent"),
-        ("RS", "enhetsOrgNr"),
-        ("XYZ", "enhetsIdent/enhetsOrgNr"),  # unexpected value
-        (None, "enhetsIdent/enhetsOrgNr"),  # None case
-        (123, "enhetsIdent/enhetsOrgNr"),  # numeric case
-    ],
-)
-def test_missing_interninfo_keys(
-    sample_path: str, altinn_type: str, expected_ident: str
-) -> None:
-    """Missing InternInfo should raise ValueError and reference correct ident."""
-    with (
-        patch("altinn.flatten.utils.is_valid_xml", return_value=True),
-        patch("altinn.flatten._validate_interninfo", return_value=False),
-        patch("altinn.flatten._check_altinn_type", return_value=altinn_type),
-    ):
-
-        with pytest.raises(ValueError) as exc:
-            _validate_file(sample_path)
-
-        msg = str(exc.value)
-        assert expected_ident in msg
-        assert "required keys in InternInfo" in msg
-
-
-def test_validate_interninfo_raises(sample_path: str) -> None:
-    """If _validate_interninfo raises, it should propagate."""
-    with (
-        patch("altinn.flatten.utils.is_valid_xml", return_value=True),
-        patch("altinn.flatten._validate_interninfo", side_effect=Exception("x")),
-    ):
-        with pytest.raises(Exception, match="x"):
-            _validate_file(sample_path)
-
-
-#
 # --- FILE PATH EDGE CASES ---
 #
 
@@ -144,20 +101,3 @@ def test_malformed_xml_file(tmp_path: Path) -> None:
     with patch("altinn.flatten.utils.is_valid_xml", return_value=False):
         with pytest.raises(ValueError):
             _validate_file(str(file_path))
-
-
-#
-# --- EDGE CASE: interninfo valid but check_altinn_type called anyway ---
-# (Should never happen logically, but we test robustness)
-#
-
-
-def test_interninfo_valid_but_altinn_type_weird(sample_path: str) -> None:
-    """If InternInfo is valid, _check_altinn_type should not affect success."""
-    with (
-        patch("altinn.flatten.utils.is_valid_xml", return_value=True),
-        patch("altinn.flatten._validate_interninfo", return_value=True),
-        patch("altinn.flatten._check_altinn_type", return_value="RS"),
-    ):
-        # Should still succeed
-        _validate_file(sample_path)

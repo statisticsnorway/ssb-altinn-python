@@ -1,86 +1,135 @@
-from unittest.mock import patch
+# Import the function under test
+from typing import Any
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 
-# Import the function under test
 from altinn.flatten import _validate_interninfo
 
-
-@pytest.fixture
-def mock_xml_ra() -> dict[str, dict[str, dict[str, str]]]:
-    return {
-        "Root": {
-            "InternInfo": {"enhetsIdent": "123", "enhetsType": "ABC", "delregNr": "001"}
-        }
-    }
+# Anta at funksjonen ligger i modul `validators.py`.
+# Juster importene til ditt faktiske modulnavn/sti.
 
 
-@pytest.fixture
-def mock_xml_rs() -> dict[str, dict[str, dict[str, str]]]:
-    return {
-        "Root": {
-            "InternInfo": {
-                "enhetsOrgNr": "987654321",
-                "enhetsType": "XYZ",
-                "delregNr": "002",
-            }
-        }
-    }
+def make_xml_dict(
+    root: str = "Root", intern_info: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Hjelpefunksjon for å lage en xml_dict-struktur som funksjonen forventer."""
+    return {root: {"InternInfo": intern_info} if intern_info is not None else {}}
 
 
-def test_validate_interninfo_ra_valid(
-    mock_xml_ra: dict[str, dict[str, dict[str, str]]],
+@pytest.mark.parametrize(
+    "altinn_type, intern_info",
+    [
+        ("RA", {"enhetsIdent": "123", "enhetsType": "ABC", "delregNr": "01"}),
+        ("RS", {"enhetsOrgNr": "987654321", "enhetsType": "DEF", "delregNr": "02"}),
+    ],
+)
+def test_validate_returns_true_for_valid_keys(
+    monkeypatch: MonkeyPatch,
+    altinn_type: str,
+    intern_info: dict[str, Any],
 ) -> None:
-    with (
-        patch("altinn.flatten._read_single_xml_to_dict", return_value=mock_xml_ra),
-        patch("altinn.flatten._check_altinn_type", return_value="RA"),
-    ):
-        assert _validate_interninfo("dummy.xml") is True
+    """Skal returnere True når alle påkrevde nøkler finnes, for både RA og RS."""
+    xml_dict = make_xml_dict(intern_info=intern_info)
+
+    # Monkeypatch avhengigheter
+    monkeypatch.setattr(
+        "altinn.flatten._read_single_xml_to_dict", lambda path: xml_dict
+    )
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda path: altinn_type)
+
+    assert _validate_interninfo("dummy.xml") is True
 
 
-def test_validate_interninfo_rs_valid(
-    mock_xml_rs: dict[str, dict[str, dict[str, str]]],
+@pytest.mark.parametrize(
+    "altinn_type, intern_info, expected_missing",
+    [
+        # RA mangler enhetsIdent
+        ("RA", {"enhetsType": "ABC", "delregNr": "01"}, ["enhetsIdent"]),
+        # RA mangler enhetsType + delregNr
+        ("RA", {"enhetsIdent": "123"}, ["enhetsType", "delregNr"]),
+        # RS mangler enhetsOrgNr
+        ("RS", {"enhetsType": "DEF", "delregNr": "02"}, ["enhetsOrgNr"]),
+        # RS mangler enhetsType + delregNr
+        ("RS", {"enhetsOrgNr": "987654321"}, ["enhetsType", "delregNr"]),
+    ],
+)
+def test_validate_raises_value_error_on_missing_keys(
+    monkeypatch: MonkeyPatch,
+    altinn_type: str,
+    intern_info: dict[str, Any],
+    expected_missing: list[str],
 ) -> None:
-    with (
-        patch("altinn.flatten._read_single_xml_to_dict", return_value=mock_xml_rs),
-        patch("altinn.flatten._check_altinn_type", return_value="RS"),
-    ):
-        assert _validate_interninfo("dummy.xml") is True
+    """Skal kaste ValueError med liste over manglende nøkler når InternInfo ikke er komplett."""
+    xml_dict = make_xml_dict(intern_info=intern_info)
+
+    monkeypatch.setattr(
+        "altinn.flatten._read_single_xml_to_dict", lambda path: xml_dict
+    )
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda path: altinn_type)
+
+    with pytest.raises(ValueError) as excinfo:
+        _validate_interninfo("dummy.xml")
+
+    msg = str(excinfo.value)
+    # Sjekk at alle forventede manglende nøkler nevnes i feilmeldingen
+    for missing in expected_missing:
+        assert missing in msg
+
+    assert "Manglende påkrevde felter i 'InternInfo'" in msg
 
 
-def test_validate_interninfo_ra_missing_key(
-    mock_xml_ra: dict[str, dict[str, dict[str, str]]],
+def test_validate_raises_value_error_on_invalid_type(
+    monkeypatch: MonkeyPatch,
 ) -> None:
-    # Remove one required key
-    incomplete_xml = mock_xml_ra.copy()
-    incomplete_xml["Root"] = incomplete_xml["Root"].copy()
-    incomplete_xml["Root"]["InternInfo"] = {"enhetsIdent": "123"}  # Missing 2 keys
+    """Skal kaste ValueError hvis skjematype ikke er RA eller RS."""
+    xml_dict = make_xml_dict(intern_info={"enhetsType": "ABC"})  # innhold uviktig
 
-    with (
-        patch("altinn.flatten._read_single_xml_to_dict", return_value=incomplete_xml),
-        patch("altinn.flatten._check_altinn_type", return_value="RA"),
-    ):
-        assert _validate_interninfo("dummy.xml") is False
+    monkeypatch.setattr(
+        "altinn.flatten._read_single_xml_to_dict", lambda path: xml_dict
+    )
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda path: "XX")
+
+    with pytest.raises(ValueError) as excinfo:
+        _validate_interninfo("dummy.xml")
+
+    assert "Ugyldig skjematype" in str(excinfo.value)
 
 
-def test_validate_interninfo_rs_missing_key(
-    mock_xml_rs: dict[str, dict[str, dict[str, str]]],
+def test_validate_raises_when_interninfo_missing(
+    monkeypatch: MonkeyPatch,
 ) -> None:
-    incomplete_xml = mock_xml_rs.copy()
-    incomplete_xml["Root"] = incomplete_xml["Root"].copy()
-    incomplete_xml["Root"]["InternInfo"] = {"enhetsOrgNr": "987"}  # Missing 2 keys
+    """Skal kaste ValueError når 'InternInfo' mangler helt (dvs. tom dict)."""
+    xml_dict = make_xml_dict(intern_info=None)  # Ingen InternInfo-nøkkel
 
-    with (
-        patch("altinn.flatten._read_single_xml_to_dict", return_value=incomplete_xml),
-        patch("altinn.flatten._check_altinn_type", return_value="RS"),
-    ):
-        assert _validate_interninfo("dummy.xml") is False
+    monkeypatch.setattr(
+        "altinn.flatten._read_single_xml_to_dict", lambda path: xml_dict
+    )
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda path: "RA")
+
+    with pytest.raises(ValueError) as excinfo:
+        _validate_interninfo("dummy.xml")
+
+    msg = str(excinfo.value)
+    # For RA uten InternInfo mangler alle tre
+    for key in ["enhetsIdent", "enhetsType", "delregNr"]:
+        assert key in msg
+    assert "Manglende påkrevde felter i 'InternInfo'" in msg
 
 
-def test_invalid_altinn_type() -> None:
-    with (
-        patch("altinn.flatten._read_single_xml_to_dict", return_value={"Root": {}}),
-        patch("altinn.flatten._check_altinn_type", return_value="XX"),
-    ):
-        with pytest.raises(ValueError):
-            _validate_interninfo("dummy.xml")
+def test_validate_message_contains_altinn_context(
+    monkeypatch: MonkeyPatch,
+) -> None:
+
+    xml_dict = make_xml_dict(intern_info={"enhetsType": "ABC", "delregNr": "01"})
+    monkeypatch.setattr(
+        "altinn.flatten._read_single_xml_to_dict", lambda path: xml_dict
+    )
+    monkeypatch.setattr("altinn.flatten._check_altinn_type", lambda path: "RA")
+
+    with pytest.raises(ValueError) as excinfo:
+        _validate_interninfo("dummy.xml")
+
+    msg = str(excinfo.value)
+
+    assert "Manglende påkrevde felter i 'InternInfo'" in msg
