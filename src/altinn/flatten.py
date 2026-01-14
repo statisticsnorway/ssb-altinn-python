@@ -581,35 +581,37 @@ def isee_transform(
     _validate_file(file_path)
 
     if _validate_interninfo(file_path):
-        
+
         if mapping is None:
             mapping = {}
-    
+
         if tag_list is None:
             tag_list = ["SkjemaData"]
-    
+
         xml_dict = _read_single_xml_to_dict(file_path)
         root_element = next(iter(xml_dict.keys()))
-    
+
         final_df = _parse_tag_elements(xml_dict, root_element, tag_list)
-    
+
         final_df = pd.concat(
             [final_df, _attach_metadata(file_path)], axis=0, ignore_index=True
         )
-    
-        final_df = pd.concat([final_df, _make_angiver_row_df(file_path)], ignore_index=True)
-    
+
+        final_df = pd.concat(
+            [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+        )
+
         final_df = _add_interninfo_columns(final_df, xml_dict, root_element, file_path)
-    
+
         if checkbox_vars is not None:
             for checkbox_var in checkbox_vars:
                 final_df = _transform_checkbox_var(final_df, checkbox_var, unique_code)
-    
+
         if mapping is not None:
             final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
-    
+
         final_df = _add_lopenr(final_df)
-    
+
         columns_order = [
             "SKJEMA_ID",
             "DELREG_NR",
@@ -619,9 +621,9 @@ def isee_transform(
             "FELTVERDI",
             "VERSION_NR",
         ]
-    
+
         final_df = final_df[columns_order]
-    
+
     return final_df
 
 
