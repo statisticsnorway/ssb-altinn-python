@@ -129,9 +129,11 @@ def _validate_interninfo(file_path: str) -> bool:
             print(key)
         print("No output will be produced")
 
-        return False
-    else:
-        return True
+        raise ValueError(
+            f"Manglende påkrevde felter i 'InternInfo': {', '.join(missing_keys)}"
+        )
+
+    return True
 
 
 def _read_single_xml_to_dict(file_path: str) -> dict[str, Any]:
@@ -469,20 +471,6 @@ def _validate_file(file_path: str) -> None:
     except Exception as e:
         raise ValueError(f"XML validation failed: {e}") from e
 
-    # InternInfo validation
-    try:
-        if not _validate_interninfo(file_path):
-            altinn_type = _check_altinn_type(file_path)
-            if altinn_type == "RA":
-                expected_ident = "enhetsIdent"
-            elif altinn_type == "RS":
-                expected_ident = "enhetsOrgNr"
-            else:
-                expected_ident = "enhetsIdent/enhetsOrgNr"
-            raise ValueError(f"Missing required keys in InternInfo: {expected_ident}")
-    except Exception as e:
-        raise ValueError(f"InternInfo validation failed: {e}") from e
-
 
 def _parse_tag_elements(
     xml_dict: dict[str, Any], root_element: str, tag_list: list[str]
@@ -591,45 +579,50 @@ def isee_transform(
         ISEE dynarev format.
     """
     _validate_file(file_path)
-    if mapping is None:
-        mapping = {}
 
-    if tag_list is None:
-        tag_list = ["SkjemaData"]
+    if _validate_interninfo(file_path):
 
-    xml_dict = _read_single_xml_to_dict(file_path)
-    root_element = next(iter(xml_dict.keys()))
+        if mapping is None:
+            mapping = {}
 
-    final_df = _parse_tag_elements(xml_dict, root_element, tag_list)
+        if tag_list is None:
+            tag_list = ["SkjemaData"]
 
-    final_df = pd.concat(
-        [final_df, _attach_metadata(file_path)], axis=0, ignore_index=True
-    )
+        xml_dict = _read_single_xml_to_dict(file_path)
+        root_element = next(iter(xml_dict.keys()))
 
-    final_df = pd.concat([final_df, _make_angiver_row_df(file_path)], ignore_index=True)
+        final_df = _parse_tag_elements(xml_dict, root_element, tag_list)
 
-    final_df = _add_interninfo_columns(final_df, xml_dict, root_element, file_path)
+        final_df = pd.concat(
+            [final_df, _attach_metadata(file_path)], axis=0, ignore_index=True
+        )
 
-    if checkbox_vars is not None:
-        for checkbox_var in checkbox_vars:
-            final_df = _transform_checkbox_var(final_df, checkbox_var, unique_code)
+        final_df = pd.concat(
+            [final_df, _make_angiver_row_df(file_path)], ignore_index=True
+        )
 
-    if mapping is not None:
-        final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
+        final_df = _add_interninfo_columns(final_df, xml_dict, root_element, file_path)
 
-    final_df = _add_lopenr(final_df)
+        if checkbox_vars is not None:
+            for checkbox_var in checkbox_vars:
+                final_df = _transform_checkbox_var(final_df, checkbox_var, unique_code)
 
-    columns_order = [
-        "SKJEMA_ID",
-        "DELREG_NR",
-        "IDENT_NR",
-        "ENHETS_TYPE",
-        "FELTNAVN",
-        "FELTVERDI",
-        "VERSION_NR",
-    ]
+        if mapping is not None:
+            final_df["FELTNAVN"] = final_df["FELTNAVN"].replace(mapping)
 
-    final_df = final_df[columns_order]
+        final_df = _add_lopenr(final_df)
+
+        columns_order = [
+            "SKJEMA_ID",
+            "DELREG_NR",
+            "IDENT_NR",
+            "ENHETS_TYPE",
+            "FELTNAVN",
+            "FELTVERDI",
+            "VERSION_NR",
+        ]
+
+        final_df = final_df[columns_order]
 
     return final_df
 
