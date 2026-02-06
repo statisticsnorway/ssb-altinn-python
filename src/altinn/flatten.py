@@ -260,7 +260,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Rydd opp
-    df = df.drop(columns=["COUNTER", "LEVELS", "LAST_COUNTER"])
+    df = df.drop(columns=["LEVELS", "LAST_COUNTER"])
 
     return df
 
@@ -556,6 +556,7 @@ def isee_transform(
     tag_list: list[str] | None = None,
     checkbox_vars: list[str] | None = None,
     unique_code: bool = False,
+    include_level: bool = False,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -573,6 +574,7 @@ def isee_transform(
             The default value is ['SkjemaData']
         checkbox_vars: Optional list of str for elements from xml containing KLASS codes.
         unique_code: Bool for if you are using unique codes from Klass or not.
+        include_level: Bool for if you want to include LEVEL-column or not.
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -612,15 +614,30 @@ def isee_transform(
 
         final_df = _add_lopenr(final_df)
 
-        columns_order = [
-            "SKJEMA_ID",
-            "DELREG_NR",
-            "IDENT_NR",
-            "ENHETS_TYPE",
-            "FELTNAVN",
-            "FELTVERDI",
-            "VERSION_NR",
-        ]
+        final_df["LEVEL"] = final_df["COUNTER"].apply(lambda x: x[::-1])
+
+        if not include_level:
+            columns_order = [
+                "SKJEMA_ID",
+                "DELREG_NR",
+                "IDENT_NR",
+                "ENHETS_TYPE",
+                "FELTNAVN",
+                "FELTVERDI",
+                "VERSION_NR",
+            ]
+
+        else:
+            columns_order = [
+                "SKJEMA_ID",
+                "DELREG_NR",
+                "IDENT_NR",
+                "ENHETS_TYPE",
+                "FELTNAVN",
+                "FELTVERDI",
+                "VERSION_NR",
+                "LEVEL",
+            ]
 
         final_df = final_df[columns_order]
 
