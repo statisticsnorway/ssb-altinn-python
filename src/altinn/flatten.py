@@ -550,6 +550,39 @@ def _add_interninfo_columns(
     return df
 
 
+def _reorder_dataframe_columns(
+    df: pd.DataFrame, include_level: bool = False
+) -> pd.DataFrame:
+    """Reorder DataFrame columns with optional LEVEL column.
+
+    Args:
+        df: The DataFrame to reorder.
+        include_level: Whether to include the LEVEL column. Defaults to False.
+
+    Returns:
+        DataFrame with reordered columns.
+
+    Examples:
+        >>> df = pd.DataFrame({'SKJEMA_ID': [1], 'DELREG_NR': [2], ...})
+        >>> result = reorder_dataframe_columns(df)
+        >>> result = reorder_dataframe_columns(df, include_level=True)
+    """
+    columns_order = [
+        "SKJEMA_ID",
+        "DELREG_NR",
+        "IDENT_NR",
+        "ENHETS_TYPE",
+        "FELTNAVN",
+        "FELTVERDI",
+        "VERSION_NR",
+    ]
+
+    if include_level:
+        columns_order.append("LEVEL")
+
+    return df[columns_order]
+
+
 def isee_transform(
     file_path: str,
     mapping: dict[str, str] | None = None,
@@ -616,30 +649,7 @@ def isee_transform(
 
         final_df["LEVEL"] = final_df["COUNTER"].apply(lambda x: x[::-1])
 
-        if not include_level:
-            columns_order = [
-                "SKJEMA_ID",
-                "DELREG_NR",
-                "IDENT_NR",
-                "ENHETS_TYPE",
-                "FELTNAVN",
-                "FELTVERDI",
-                "VERSION_NR",
-            ]
-
-        else:
-            columns_order = [
-                "SKJEMA_ID",
-                "DELREG_NR",
-                "IDENT_NR",
-                "ENHETS_TYPE",
-                "FELTNAVN",
-                "FELTVERDI",
-                "VERSION_NR",
-                "LEVEL",
-            ]
-
-        final_df = final_df[columns_order]
+        final_df = _reorder_dataframe_columns(final_df, include_level)
 
     return final_df
 
