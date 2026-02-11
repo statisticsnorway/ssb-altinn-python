@@ -260,7 +260,7 @@ def _add_lopenr(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Rydd opp
-    df = df.drop(columns=["COUNTER", "LEVELS", "LAST_COUNTER"])
+    df = df.drop(columns=["LEVELS", "LAST_COUNTER"])
 
     return df
 
@@ -550,12 +550,46 @@ def _add_interninfo_columns(
     return df
 
 
+def _reorder_dataframe_columns(
+    df: pd.DataFrame, include_level: bool = False
+) -> pd.DataFrame:
+    """Reorder DataFrame columns with optional LEVEL column.
+
+    Args:
+        df: The DataFrame to reorder.
+        include_level: Whether to include the LEVEL column. Defaults to False.
+
+    Returns:
+        DataFrame with reordered columns.
+
+    Examples:
+        >>> df = pd.DataFrame({'SKJEMA_ID': [1], 'DELREG_NR': [2], ...})
+        >>> result = reorder_dataframe_columns(df)
+        >>> result = reorder_dataframe_columns(df, include_level=True)
+    """
+    columns_order = [
+        "SKJEMA_ID",
+        "DELREG_NR",
+        "IDENT_NR",
+        "ENHETS_TYPE",
+        "FELTNAVN",
+        "FELTVERDI",
+        "VERSION_NR",
+    ]
+
+    if include_level:
+        columns_order.append("LEVEL")
+
+    return df[columns_order]
+
+
 def isee_transform(
     file_path: str,
     mapping: dict[str, str] | None = None,
     tag_list: list[str] | None = None,
     checkbox_vars: list[str] | None = None,
     unique_code: bool = False,
+    include_level: bool = False,
 ) -> pd.DataFrame:
     """Transforms a XML to ISEE-format using xmltodict.
 
@@ -573,6 +607,7 @@ def isee_transform(
             The default value is ['SkjemaData']
         checkbox_vars: Optional list of str for elements from xml containing KLASS codes.
         unique_code: Bool for if you are using unique codes from Klass or not.
+        include_level: Bool for if you want to include LEVEL-column or not.
 
     Returns:
         pandas.DataFrame: A transformed DataFrame which aligns with the
@@ -612,17 +647,9 @@ def isee_transform(
 
         final_df = _add_lopenr(final_df)
 
-        columns_order = [
-            "SKJEMA_ID",
-            "DELREG_NR",
-            "IDENT_NR",
-            "ENHETS_TYPE",
-            "FELTNAVN",
-            "FELTVERDI",
-            "VERSION_NR",
-        ]
+        final_df["LEVEL"] = final_df["COUNTER"].apply(lambda x: x[::-1])
 
-        final_df = final_df[columns_order]
+        final_df = _reorder_dataframe_columns(final_df, include_level)
 
     return final_df
 

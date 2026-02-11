@@ -30,5 +30,4 @@ def test_add_lopenr(sample_df: pd.DataFrame) -> None:
     assert "field4" == result_df.at[3, "FELTNAVN"]
 
     # Verify COUNTER and LEVELS columns are removed
-    assert "COUNTER" not in result_df.columns
     assert "LEVELS" not in result_df.columns
