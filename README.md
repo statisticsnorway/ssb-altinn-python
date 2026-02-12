@@ -96,16 +96,40 @@ isee_transform(file=file,mapping=mapping,checkbox_vars=checkboxList,unique_code=
 
 ```
 
+#### Include LEVEL-column
+Some alinn3 forms contain complex structures, known as table-in-table, or table-in-table-in-table, etc. In these cases, further adaptation of the result from 'isee_transform()'' is necessary in order to prepare data for loading into ISEE.
+To facilitate this adaptation, it is possible to extract an additional column 'LEVEL' by using 'isee_transform()''. The 'LEVEL' column displays the different levels in the structure of the relevant RA form as a list, and can be used to customize sequence numbers as needed.
+'include_level' is set to False by default, so those who are already using isee_transform() in Kildomaten or other solutions do not need to take any action.
+
+Note! — The 'LEVEL' column must be removed before the load file for ISEE is created.
+
+```python
+from altinn import isee_transform
+
+file = 'gs://ssb-suv-altinn-ra0485-01-test/2025/11/11/ad7dc245dd22_41d54855-0ae9-48c5-abd2-c62a5ab071b6/form_ad7dc245dd22.xml'
+
+tags = ['SkjemaData', 'Kontakt']
+
+df = isee_transform(file, tag_list = tags, include_level=True)
+```
+
 
 The function handles flat structures and 'tables' in the XML. If the XML contains repeating values, it puts a suffix containig a number at the end of the FELTNAVN-column. If the XML-contains more complex structures as 'table in table' if will give a warning with a list of which values in FELTNAVN that needs to be further processed before it can be used in ISEE.
 These warnings will not be visible in 'Kildomaten' unless you check the logs, so it's recommended to test outside of 'Kildomaten' before ypu put it in production.
 
 
-The XML needs to contain certain fields in the 'InternInfo'-block, The required filds are:
+The XML needs to contain certain fields in the 'InternInfo'-block,
+The required fields for RA-forms are:
 - 'enhetsIdent'
 - 'enhetsType'
 - 'delregNr'
 
+The required fields for RS-forms are:
+- 'enhetsOrgNr'
+- 'enhetsType'
+- 'delregNr'
+
+The field 'raNummer' under 'InternInfo' in the XML determines whether a form is flattened as RA or RS.
 If one or more of these fields are missing in the XML, the processing will stop, giving a message with witch fields that are missing.
 
 
