@@ -14,7 +14,7 @@ dependencies = [
     "pandas-stubs>=2.0.0.230412",
     "xmltodict>=0.13.0",
     "types-xmltodict>=0.13.0.3",
-    "gcsfs (>=2025.12.0,<2026.0.0)",
+    "gcsfs (>=2025.12.0,<2027.0.0)",
 ]
 
 [project.urls]
@@ -50,6 +50,7 @@ typeguard = ">=2.13.3"
 xdoctest = { extras = ["colors"], version = ">=0.15.10" }
 myst-parser = { version = ">=0.16.1" }
 deptry = ">=0.23.0"
+ipykernel = "^7.2.0"
 
 [tool.poetry.requires-plugins]
 poetry-plugin-export = ">=1.9"
