@@ -24,7 +24,7 @@ class FileInfo:
         """Initialize an XmlFile object with the given file path.
 
         Args:
-            file_path (str): The path to the XML file.
+            file_path: The path to the XML file.
         """
         # Store the original file path
         self.original_file_path = file_path

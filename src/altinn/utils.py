@@ -11,7 +11,7 @@ def is_gcs(file_path: str) -> bool:
     """Check whether the given file path is a Google Cloud Storage path.
 
     Args:
-        file_path (str): The file path to check.
+        file_path: The file path to check.
 
     Returns:
         bool: True if the file path is a Google Cloud Storage path, False otherwise.
@@ -23,7 +23,7 @@ def is_valid_xml(file_path: str) -> bool:
     """Check whether the file is valid XML.
 
     Args:
-        file_path (str): The path to the XML file.
+        file_path: The path to the XML file.
 
     Returns:
         bool: True if the XML is valid, False otherwise.

@@ -27,7 +27,7 @@ class ParseSingleXml:
         """Initialize an XmlFile object with the given file path.
 
         Args:
-            file_path (str): The path to the XML file.
+            file_path: The path to the XML file.
         """
         expanded_path = os.path.expanduser(file_path)
         self.file_path = expanded_path
@@ -44,8 +44,8 @@ class ParseSingleXml:
 
         Args:
             element: The XML element to traverse.
-            column_counter (int): The counter for generating unique column names.
-            data (dict or None): The dictionary to store the extracted data.
+            column_counter: The counter for generating unique column names.
+            data: The dictionary to store the extracted data.
 
         Returns:
             dict: The dictionary containing the extracted data.

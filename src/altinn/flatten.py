@@ -323,10 +323,10 @@ def _pad_microseconds_to_six(date_str: str) -> str:
     If the string lacks microseconds but ends with 'Z', it adds '.000000' before the 'Z'.
 
     Args:
-        date_str (str): An ISO 8601 datetime string, typically ending in 'Z' or a timezone offset.
+        date_str: An ISO 8601 datetime string, typically ending in 'Z' or a timezone offset.
 
     Returns:
-        str: The datetime string with exactly six digits after the decimal point.
+        The datetime string with exactly six digits after the decimal point.
 
     Example:
         _pad_microseconds_to_six("2025-03-20T15:54:40.637Z")
@@ -459,11 +459,10 @@ def _validate_file(file_path: str) -> None:
     'enhetsIdent', 'enhetsType', and 'delregNr'.
 
     Args:
-        file_path : Path to the XML file to validate.
+        file_path: Path to the XML file to validate.
 
     Raises:
-        ValueError: If the file is not a valid XML file.
-        ValueError: If the file does not contain all required InternInfo keys.
+        ValueError: If the file is not a valid XML file or does not contain all required InternInfo keys.
     """
     try:
         if not utils.is_valid_xml(file_path):
@@ -478,9 +477,9 @@ def _parse_tag_elements(
     """Parses specified tag elements from a nested XML dictionary, flattens their contents, and returns them as a concatenated DataFrame.
 
     Args:
-        xml_dict : The dictionary representation of the XML data.
-        root_element : The root element key within the XML dictionary to search for tags.
-        tag_list : A list of tag names to extract and flatten from the root element.
+        xml_dict: The dictionary representation of the XML data.
+        root_element: The root element key within the XML dictionary to search for tags.
+        tag_list: A list of tag names to extract and flatten from the root element.
 
     Returns:
         pd.DataFrame: A DataFrame containing the concatenated flattened tag data with columns "FELTNAVN" and "FELTVERDI".
@@ -500,7 +499,7 @@ def _attach_metadata(file_path: str) -> pd.DataFrame:
     """Reads metadata from a JSON file at the specified file path and returns it as a pandas DataFrame.
 
     Args:
-        file_path : The path to the JSON metadata file.
+        file_path: The path to the JSON metadata file.
 
     Returns:
         pd.DataFrame: A DataFrame containing the metadata if available; otherwise, an empty DataFrame.
@@ -514,11 +513,11 @@ def _add_interninfo_columns(
 ) -> pd.DataFrame:
     """Adds internal information columns to the given DataFrame based on the provided XML dictionary and file path.
 
-    Parameters:
-        df : The DataFrame to which internal information columns will be added.
-        xml_dict : A dictionary representation of the XML data.
-        root_element : The root element key in the XML dictionary.
-        file_path : The file path used to extract the version number.
+    Args:
+        df: The DataFrame to which internal information columns will be added.
+        xml_dict: A dictionary representation of the XML data.
+        root_element: The root element key in the XML dictionary.
+        file_path: The file path used to extract the version number.
 
     Returns:
         pd.DataFrame: The modified DataFrame with additional internal information columns.
@@ -746,7 +745,7 @@ def _check_altinn_type(file_path: str) -> str:
     first two characters of that value.
 
     Args:
-        file_path (str): Path to the XML file to process.
+        file_path: Path to the XML file to process.
 
     Returns:
         str: The first two characters of the `raNummer` string. If `raNummer`
