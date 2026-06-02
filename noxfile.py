@@ -23,7 +23,7 @@ except ImportError:
     raise SystemExit(dedent(message)) from None
 
 package = "altinn"
-python_versions = ["3.12", "3.13", "3.14"]
+python_versions = ["3.13", "3.12", "3.14"]
 python_versions_for_test = python_versions
 nox.needs_version = ">= 2025.2.9"
 nox.options.sessions = (
@@ -139,7 +139,7 @@ def insert_header_in_hook(header: dict[str, str], lines: list[str]) -> str:
     return "\n".join(lines)
 
 
-@session(name="pre-commit", python=python_versions[1])
+@session(name="pre-commit", python=python_versions[0])
 def precommit(session: Session) -> None:
     """Lint using pre-commit."""
     args = session.posargs or [
