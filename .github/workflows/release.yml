@@ -59,7 +59,7 @@ jobs:
         uses: salsify/action-detect-and-tag-new-version@b1778166f13188a9d478e2d1198f993011ba9864 # v2.0.3
         with:
           version-command: |
-            +        if: steps.check-parent-commit.outputs.has-parent == 'true'
+            if: steps.check-parent-commit.outputs.has-parent == 'true'
         shell: bash
         run: |
           set -euo pipefail
